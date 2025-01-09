@@ -121,6 +121,8 @@ def build_and_annotate_tree(dates,
     tree_string = tree_string.replace("о", "o")    # weird unicode o - replace with normal o
     tree_string = tree_string.replace("с", "c")    # weird unicode c - replace with normal c
 
+    tree_string = tree_string.replace(" ", "_")    # replace all spaces with underscores - so Newick format works without quoted names
+
     tre = ete3.Tree(tree_string,format=1,quoted_node_names=True)
 
     logger.info("ETE3 tree loaded. Beginning annotation")
@@ -134,7 +136,7 @@ def build_and_annotate_tree(dates,
     for node in tre.traverse(strategy='preorder'):
         # get OTT identifier (if the node is not only a most recent common ancestor) and look it up in the OT taxonomy
         node.name = node.name.strip("'")
-        node.name = node.name.strip(" ")
+        node.name = node.name.strip("_")
         descr_year = None
         if node.name[:4] == "mrca":
             tx_level = "mrca"
@@ -218,12 +220,17 @@ def build_and_annotate_tree(dates,
     logger.info("Annotation complete. %d nodes annotated." % count)
     fout.close()
 
+    # remove things we noted as extinct (may include non-extinct nodes that we want to delete for other reasons)
     for node in extinct_nodes:
         tree_fixing.remove_tree_below(node)
         tree_fixing.remove_node_and_parents(node, False)
 
 
-    def add_ranks(parent, current_rank=None, plants=False, animals=False):
+    def add_anc_ranks(parent, current_rank=None, plants=False, animals=False, domain=None, kingdom=None, phylum=None, clas=None, order=None, family=None):
+        """Add ancestral ranks. If this node has no rank, this is the rank of the first node above it which
+        does have a rank. If this node has a rank, that rank is both its ancestral and descendant rank.
+        Also annotate every node with the domain, kingdom, phylum, class, order and family it is under (if any).
+        """
         if current_rank is None:
             # only occurs at root (first call of function)
             current_rank = parent.tx_level
@@ -231,6 +238,26 @@ def build_and_annotate_tree(dates,
 
         if tx_levels[parent.tx_level] > 0 or tx_levels[current_rank] < 0:
             current_rank = parent.tx_level
+
+        if parent.tx_level == "domain":
+            domain = parent.name
+        elif parent.tx_level == "kingdom":
+            kingdom = parent.name
+        elif parent.tx_level == "phylum":
+            phylum = parent.name
+        elif parent.tx_level == "class":
+            clas = parent.name
+        elif parent.tx_level == "order":
+            order = parent.name
+        elif parent.tx_level == "family":
+            family = parent.name
+
+        parent.add_feature("domain", domain)
+        parent.add_feature("kingdom", kingdom)
+        parent.add_feature("phylum", phylum)
+        parent.add_feature("clas", clas)
+        parent.add_feature("order", order)
+        parent.add_feature("family", family)
 
         for child in parent.children:
             if tx_levels[child.tx_level] < 0:
@@ -260,18 +287,21 @@ def build_and_annotate_tree(dates,
 
             if child.name == "Metazoa_ott691846":
                 # animals
-                add_ranks(child, current_rank, False, True)
+                add_anc_ranks(child, current_rank, False, True, domain, kingdom, phylum, clas, order, family)
             elif child.name == "mrcaott2ott148" or parent.name == "Fungi_ott352914":
                 # plants and fungi
-                add_ranks(child, current_rank, True, False)
+                add_anc_ranks(child, current_rank, True, False, domain, kingdom, phylum, clas, order, family)
             else:
-                add_ranks(child, current_rank, plants, animals)
+                add_anc_ranks(child, current_rank, plants, animals, domain, kingdom, phylum, clas, order, family)
 
     logger.info("Adding ancestral ranks.")
-    add_ranks(tre)
+    add_anc_ranks(tre)
 
 
     def add_desc_ranks(parent, plants=False, animals=False):
+        """Add descendant ranks. If this node has no rank, this is the rank of the first node below it which
+        does have a rank. If this node has a rank, that rank is both its ancestral and descendant rank.
+        """
         if parent.is_leaf():
             parent.add_feature("desc_rank",parent.tx_level)
             return parent.tx_level

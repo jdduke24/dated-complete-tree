@@ -24,8 +24,8 @@ def remove_inconsistent_dates(parent, mrad):
 def date_labelling(parent):
     if parent.is_leaf():
         if parent.date != 0:
-            logger.warning("Non-zero leaf node %s." % parent.name)
-        oldest_path = [parent.date ,0]
+            logger.warning("Leaf node %s has non-zero date." % parent.name)
+        oldest_path = [parent.date,0]
     else:
         oldest_path = [0,0]
         for child in parent.children:

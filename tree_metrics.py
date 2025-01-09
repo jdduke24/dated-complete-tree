@@ -1,3 +1,4 @@
+import ete3
 import numpy
 
 import logging
@@ -45,6 +46,7 @@ def get_ed_scores(dated_tre):
     # then, label each node with the number of leaves below it
     num_desc_leaves(dated_tre)
 
+    # finally, recurse through tree computing ED scores
     all_scores = {}
     accumulate_ed_scores(dated_tre, 0, all_scores)
 
@@ -80,3 +82,35 @@ def write_ed_scores(scores, filename):
                                                         numpy.percentile(scores[key],75),
                                                         numpy.max(scores[key]),
                                                         len(scores[key])))
+
+
+def compute_rf_distances(output_folder, output_tree_filename, n):
+    logger.info("Computing Robinson-Foulds distances.")
+
+    fout = open("%s/rf_distances.csv" % (output_folder),"w")
+
+    results = []
+    for i in range(n):
+        tre1 = ete3.Tree(open("%s/%s_%d.tre" % (output_folder, output_tree_filename, i+1),"r").read(),format=1)
+        results.append([])
+        for j in range(n):
+            if j > i:
+                logger.info("Computing RF distance between tree %d and tree %d." % (i+1,j+1))
+                tre2 = ete3.Tree(open("%s/%s_%d.tre" % (output_folder, output_tree_filename, j+1),"r").read(),format=1)
+                x = tre1.robinson_foulds(tre2)
+                results[-1].append(x[0])
+            else:
+                results[-1].append(None)
+
+
+    for i in range(n):
+        for j in range(n):
+            if results[i][j]:
+                fout.write("%f" % (results[i][j]))
+            else:
+                fout.write("0")
+
+            if j != n-1:
+                fout.write(",")
+            else:
+                fout.write("\n")

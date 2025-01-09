@@ -27,20 +27,36 @@ def generate_trees(args):
                                                                            descr_dates=args.descr_dates)
 
     # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
-    whole_tre_copy = tree_loading.build_and_annotate_tree(dates, phylogeny_nodes, taxa, descr_years)
+    whole_tre_unmodified = tree_loading.build_and_annotate_tree(dates,
+                                                                phylogeny_nodes,
+                                                                taxa,
+                                                                descr_years,
+                                                                tree_filename=args.supertree)
+
+    if args.compute_ed:
+        import tree_metrics
+        ed_scores = {}
+
+    if args.maintain_species_set:
+        import random
+        import datetime
 
     for n in range(args.num_trees):
-        # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
-        whole_tre = whole_tre_copy.copy()
+        # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
+        # reloading everything
+        whole_tre = whole_tre_unmodified.copy()
 
         # Remove anything below species level (this includes promoting some subspecies to species if they are the only
         # example of their species)
+        if args.maintain_species_set:
+            random.seed(100)
         tree_fixing.remove_subspecies(whole_tre)
 
         #####################################################################################################################
 
         # Now, fixing the topology:
-
+        if args.maintain_species_set:
+            random.seed(datetime.datetime.now().timestamp())
         # First, do labelling for steps 1-3:
         #  - 1-2 are independent of each other; step 3 collects up nodes not labelled in 1-2.
         #  - tree is only labelled at this stage; modifications are made in tree_fixing functions.
@@ -79,7 +95,16 @@ def generate_trees(args):
         tree_dating.impute_missing_dates(whole_tre)
 
         # All nodes now dated - set dists in ete and write out tree.
-        tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/dated_tree_%d.tre" % (args.output_folder, n+1))
+        tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_%d.tre" % (args.output_folder, args.output_tree_filename, n+1))
+
+        if args.compute_ed:
+            tree_metrics.add_ed_scores(whole_tre, ed_scores)
+
+    if args.compute_ed:
+        tree_metrics.write_ed_scores(ed_scores, filename="%s/ed_scores.csv" % (args.output_folder))
+
+    if args.compute_rf:
+        tree_metrics.compute_rf_distances(args.output_folder, args.output_tree_filename, args.num_trees)
 
 
 def main():
@@ -98,6 +123,10 @@ def main():
     parser.add_argument("--output_folder",
                         help="Path of folder where output trees will be written in Newick format",
                         default="output")
+
+    parser.add_argument("--output_tree_filename",
+                        help="Filename for output trees, e.g. 'dated_tree' would result in trees named 'dated_tree_1', 'dated_tree_2' etc.",
+                        default="dated_tree")
 
     parser.add_argument("--supertree",
                         help="Path of the labelled_supertree_ottnames.tre file from the Open Tree of Life",
@@ -118,6 +147,18 @@ def main():
     parser.add_argument("--descr_dates",
                         help="Path of a csv file containing description dates for species",
                         default="oz_data/descr_dates.csv")
+
+    parser.add_argument("--maintain_species_set",
+                        help="Flag: whether to keep the set of species the same across all trees, enabling computation of distance metrics between trees. Default: False.",
+                        action="store_true")
+
+    parser.add_argument("--compute_ed",
+                        help="Flag: whether to compute a distribution of ED scores. A csv file summarising the scores will be placed in the output folder. Default: False.",
+                        action="store_true")
+
+    parser.add_argument("--compute_rf",
+                        help="Flag: whether to compute Robinson-Foulds distances between all pairs of trees. A csv file of distances be placed in the output folder. Default: False.",
+                        action="store_true")
 
     args = parser.parse_args()
     generate_trees(args)

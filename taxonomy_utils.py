@@ -46,60 +46,60 @@ name_regex = []
 
 normal_name = r"[A-Za-z×ëäöﬂæ«\-\[\]]"
 
-anything = r"[A-Za-z0-9αβγδεμθ\.,/&#?=:()<>+*_ \[\]\-]"
+anything = r"[A-Za-z0-9αβγδεμθ\.,/&#?=:()<>+*_\[\]\-]"
 
 ottid = r"(ott[0-9]+)"
 
 # 0. standard name with x (extinct): x_Genus_species_ott1234. Mark as extinct and ignore.
-name_regex.append("^x[_ ]" + normal_name + "+[_ ]" + normal_name + "+[_ ]" + ottid + "$")
+name_regex.append("^x_" + normal_name + "+_" + normal_name + "+_" + ottid + "$")
 
 # 1. uncultured with sp. at end: uncultured_BL#AH_sp._ott1234. Use whole name as species; whole name without sp. as genus.
-name_regex.append("^[Uu]ncultured[_ ](?:Candidatus[_ ])?(" + anything + r"+)[_ ](sp\.)[_ ]" + ottid + "$")
+name_regex.append("^[Uu]ncultured_(?:Candidatus_)?(" + anything + r"+)_(sp\.)_" + ottid + "$")
 
 # 2. uncultured without sp. at end: uncultured_BL#AH_ott1234. Use whole name as both species and genus.
-name_regex.append("^[Uu]ncultured[_ ](" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^[Uu]ncultured_(" + anything + "+)_" + ottid + "$")
 
 # 3. unidentified: unidentified_BL#AH_ott1234. Use whole name as both species and genus.
-name_regex.append("^[Uu]nidentified[_ ](" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^[Uu]nidentified_(" + anything + "+)_" + ottid + "$")
 
 # 4. standard name with Candidatus: Candidatus_Genus_species_ott1234. Use genus name and species name as given.
-name_regex.append("^[Cc]andidatus[_ ](" + normal_name + "+)[_ ](" + normal_name + "+)[_ ]" + ottid + "$")
+name_regex.append("^[Cc]andidatus_(" + normal_name + "+)_(" + normal_name + "+)_" + ottid + "$")
 
 # 5. weird name with Candidatus: Candidatus_BLAH#AS_121_ott1234. Use whole name as both species and genus.
-name_regex.append("^[Cc]andidatus[_ ](" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^[Cc]andidatus_(" + anything + "+)_" + ottid + "$")
 
 # 6. anything with cf., sp., aff., nr. at start of name. Use normal name part as genus, whole name without cf as species.
-name_regex.append(r"^(cf\.|sp\.|aff\.|nr\.)[_ ](" + normal_name + "+)[_ ](" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append(r"^(cf\.|sp\.|aff\.|nr\.)_(" + normal_name + "+)_(" + anything + "+)_" + ottid + "$")
 
 # 7. any other name that starts with lower case: use whole name as genus and species ("do no harm")
-name_regex.append("^([a-z].*)[_ ]" + ottid + "$")
+name_regex.append("^([a-z].*)_" + ottid + "$")
 
 # 8. genus only with sp. at end: Genus_sp._ott1234. Use whole name as species; whole name without sp. as genus.
-name_regex.append("^(" + normal_name + r"+)[_ ](sp\.)[_ ]" + ottid + "$")
+name_regex.append("^(" + normal_name + r"+)_(sp\.)_" + ottid + "$")
 
 # 9. standard name: Genus_species_ott1234. Use genus name and species name as given.
-name_regex.append("^(" + normal_name + "+)[_ ](" + normal_name + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + normal_name + "+)_(" + normal_name + "+)_" + ottid + "$")
 
 # 10. with subspecies: Genus_species_subspecies_ott1234. Use genus name and species name as given.
-name_regex.append("^(" + normal_name + "+)[_ ](" + normal_name + "+)[_ ](" + normal_name + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + normal_name + "+)_(" + normal_name + "+)_(" + normal_name + "+)_" + ottid + "$")
 
 # 11. with variety/forma/subsp: Genus_species_var._subspecies_ott1234. Use genus name and species name as given.
-name_regex.append("^(" + normal_name + "+)[_ ](" + normal_name + r"+)[_ ](var\.|f\.|subsp\.)+[_ ](" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + normal_name + "+)_(" + normal_name + r"+)_(var\.|f\.|subsp\.)+_(" + anything + "+)_" + ottid + "$")
 
 # 12. genus only: Genus_ott1234. Use genus name as both species and genus
-name_regex.append("^(" + normal_name + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + normal_name + "+)_" + ottid + "$")
 
 # 13. anything with cf., sp., aff., nr. in name. Use whole name as species; whole name without sp. and any subsequent stuff as genus.
-name_regex.append("^(" + anything + r"+)[_ ](cf\.|sp\.|aff\.|nr\.|sect\.|subsect\.|subgen\.|ser\.|trib\.|str\.)(" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + anything + r"+)_(cf\.|sp\.|aff\.|nr\.|sect\.|subsect\.|subgen\.|ser\.|trib\.|str\.)(" + anything + "+)_" + ottid + "$")
 
 # 14. with some non-basic-subspecies text: Genus_species_2VRR_BL#AH_ott1234
-name_regex.append("^(" + normal_name + "+)[_ ](" + normal_name + "+)[_ ](" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + normal_name + "+)_(" + normal_name + "+)_(" + anything + "+)_" + ottid + "$")
 
 # 15. with some non-basic-species text: Genus_2VRR_BL#AH_ott1234
-name_regex.append("^(" + normal_name + "+)[_ ](" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + normal_name + "+)_(" + anything + "+)_" + ottid + "$")
 
 # 16. with some non-basic-Genus text: BL#AH_ott1234
-name_regex.append("^(" + anything + "+)[_ ]" + ottid + "$")
+name_regex.append("^(" + anything + "+)_" + ottid + "$")
 
 standard_name = set([1,4,8,10,11,13,14,15])
 
