@@ -222,6 +222,7 @@ def build_and_annotate_tree(dates,
 
     # remove things we noted as extinct (may include non-extinct nodes that we want to delete for other reasons)
     for node in extinct_nodes:
+        logger.info("Attempting to delete node in extinct_nodes: %s." % node.name)
         tree_fixing.remove_tree_below(node)
         tree_fixing.remove_node_and_parents(node, False)
 

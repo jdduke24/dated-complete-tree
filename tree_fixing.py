@@ -89,12 +89,12 @@ def remove_subspecies(tre):
             species_names.add(node.species_name)
 
     for node in species_nodes:
+        logger.debug("Removing all nodes below species node %s." % (node.name))
         remove_tree_below(node)
         node.date = 0
 
     # Deal with remaining nodes of rank below species.
     # First get lists of such nodes, in dictionaries where keys are the species names.
-    norank_terminals = {}
     subsp_dict = {}
     for node in tre.traverse():
         # if node.tx_level == "no rank - terminal":
@@ -113,23 +113,6 @@ def remove_subspecies(tre):
             subsp_dict[node.species_name].append(node)
 
 
-    # For "no rank - terminal" nodes, delete them if they are endosymbionts, or keep one of each species if not.
-    for sp in norank_terminals:
-        if "endosymbiont" in sp:
-            # if endosymbiont, delete all nodes
-            for node in norank_terminals[sp]:
-                remove_node_and_parents(node)
-        else:
-            # otherwise leave the first one here and promote it to species...
-            logger.info("Node %s, a no-rank terminal, kept and promoted to species." % (norank_terminals[sp][0].name))
-            norank_terminals[sp][0].tx_level = "species (promoted)"
-            # terminal already has a date of 0
-
-            # ...then delete all others
-            for node in norank_terminals[sp][1:]:
-                remove_node_and_parents(node)
-
-
     # For other sub-species ranks:
     # Where there are multiple subspecies (or varieties etc) of the same species, but no node representing the species itself,
     # remove all but one of the subspecies and "promote" the remaining subspecies into a species.
@@ -137,7 +120,7 @@ def remove_subspecies(tre):
         logger.debug("List for %s has length %d." % (sp, len(subsp_dict[sp])))
         if sp in species_names:
             # if there is a species node with this name elsewhere in the tree, delete all subspecies
-            logger.info("Species %s already exists; deleting entire list." % (sp))
+            logger.info("Species %s already exists; deleting entire list of subspecies." % (sp))
             keep = None
         else:
             # otherwise, choose one of the subspecies nodes to represent this species
