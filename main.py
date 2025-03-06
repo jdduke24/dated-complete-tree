@@ -1,5 +1,6 @@
 import os
 import sys
+import gc
 
 import tree_loading
 import tree_labelling
@@ -37,9 +38,13 @@ def generate_trees(args):
         import tree_metrics
         ed_scores = {}
 
+    if args.compute_rf:
+        args.maintain_species_set = True
+
     if args.maintain_species_set:
         import random
         import datetime
+        f_seeds = open("%s/seeds.txt" % args.output_folder, "wt")
 
     for n in range(args.num_trees):
         # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
@@ -56,7 +61,9 @@ def generate_trees(args):
 
         # Now, fixing the topology:
         if args.maintain_species_set:
-            random.seed(datetime.datetime.now().timestamp())
+            sd = datetime.datetime.now().timestamp()
+            f_seeds.write("%d,%f\n" % (n+1,sd))
+            random.seed(sd)
         # First, do labelling for steps 1-3:
         #  - 1-2 are independent of each other; step 3 collects up nodes not labelled in 1-2.
         #  - tree is only labelled at this stage; modifications are made in tree_fixing functions.
@@ -99,6 +106,10 @@ def generate_trees(args):
 
         if args.compute_ed:
             tree_metrics.add_ed_scores(whole_tre, ed_scores)
+
+        del whole_tre
+        gc.collect()
+
 
     if args.compute_ed:
         tree_metrics.write_ed_scores(ed_scores, filename="%s/ed_scores.csv" % (args.output_folder))

@@ -50,7 +50,7 @@ def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root):
                 else:
                     # otherwise, we have a species from a taxonomy that is not below any genus node
                     #  -- need to collect up to be moved into a non-monophyletic group,
-                    #     TODO: but if it is attached directly to some subgenus or species group, leave it where it is
+                    #     but if it is attached directly to some subgenus or species group, leave it where it is
                     if tx_levels[parent.tx_level] <= tx_levels["species"] or tx_levels[parent.tx_level] >= tx_levels["genus"]:
                         nmp_genus_dict[child.genus_name][0].append(child)
                         child.info = "NMP FIX %s" % child.genus_name

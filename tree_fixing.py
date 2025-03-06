@@ -129,6 +129,8 @@ def remove_subspecies(tre):
             if len(subsp_dict[sp]) == 1:
                 logger.info("Node %s kept and promoted to species from %s because it is the only example of species %s." % (subsp_dict[sp][0].name, subsp_dict[sp][0].tx_level, sp))
                 subsp_dict[sp][0].tx_level = "species (promoted)"
+                subsp_dict[sp][0].ancestral_rank = "species (promoted)"
+                subsp_dict[sp][0].desc_rank = "species (promoted)"
                 if subsp_dict[sp][0].date is None:
                     subsp_dict[sp][0].date = 0
                 continue
@@ -151,6 +153,8 @@ def remove_subspecies(tre):
                 if len(nm_parts) > 2 and nm_parts[1] == nm_parts[2]:
                     logger.info("Node %s kept and promoted to species from %s based on repetition of species name." % (subsp_dict[sp][i].name, subsp_dict[sp][i].tx_level))
                     subsp_dict[sp][i].tx_level = "species (promoted)"
+                    subsp_dict[sp][i].ancestral_rank = "species (promoted)"
+                    subsp_dict[sp][i].desc_rank = "species (promoted)"
                     if subsp_dict[sp][i].date is None:
                         subsp_dict[sp][i].date = 0
                     sp_found = i
@@ -161,6 +165,8 @@ def remove_subspecies(tre):
                 keep = random.choice(subsp_dict[sp])
                 logger.info("Node %s kept and promoted to species from %s based on random choice." % (keep.name, keep.tx_level))
                 keep.tx_level = "species (promoted)"
+                keep.ancestral_rank = "species (promoted)"
+                keep.desc_rank = "species (promoted)"
                 if keep.date is None:
                     keep.date = 0
             else:
@@ -285,6 +291,7 @@ def fix_polytomy(parent):
         if new_sibling is parent:
             new_node = create_node("mrcap")
             new_node.ancestral_rank = parent.ancestral_rank
+            new_node.desc_rank = parent.desc_rank
             current_children = list(parent.children)
             for child in current_children:
                 new_node.add_child(child.detach())

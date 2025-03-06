@@ -53,6 +53,18 @@ def impute_missing_dates(tre):
             node.imputed_date = True
 
 
+def compute_branch_lengths(tre, round_numbers=False):
+    for node in tre.traverse():
+        if node.up:
+            dist = node.up.date - node.date
+            if dist < 0:
+                logger.warning("Warning: Negative branch length above %s" % node.name)
+            if round_numbers:
+                node.dist = round_to_4sf(node.up.date - node.date)
+            else:
+                node.dist = node.up.date - node.date
+
+
 def round_to_4sf(x):
     """Round to four sig figs: assumes input is less than 10000."""
     if x > 1000:
@@ -68,12 +80,7 @@ def round_to_4sf(x):
 
 
 def write_tree_with_branch_lengths(tre, filename):
-    for node in tre.traverse():
-        if node.up:
-            dist = node.up.date - node.date
-            if dist < 0:
-                logger.warning("Warning: Negative branch length above %s" % node.name)
-            node.dist = round_to_4sf(node.up.date - node.date)
+    compute_branch_lengths(tre, round_numbers=True)
 
     tre.write(outfile=filename,
                  format=1,

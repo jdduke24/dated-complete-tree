@@ -1,3 +1,4 @@
+import gc
 import ete3
 import numpy
 
@@ -99,18 +100,22 @@ def compute_rf_distances(output_folder, output_tree_filename, n):
                 tre2 = ete3.Tree(open("%s/%s_%d.tre" % (output_folder, output_tree_filename, j+1),"r").read(),format=1)
                 x = tre1.robinson_foulds(tre2)
                 results[-1].append(x[0])
+                fout.write("%f" % (x[0]))
+                del tre2
+                gc.collect()
             else:
                 results[-1].append(None)
-
-
-    for i in range(n):
-        for j in range(n):
-            if results[i][j]:
-                fout.write("%f" % (results[i][j]))
-            else:
-                fout.write("0")
+                if j == i:
+                    fout.write("0")
+                else:
+                    fout.write("%f" % (results[j][i]))
 
             if j != n-1:
                 fout.write(",")
             else:
                 fout.write("\n")
+
+        del tre1
+        gc.collect()
+
+    fout.close()
