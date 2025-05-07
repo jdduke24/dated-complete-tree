@@ -99,7 +99,9 @@ def build_and_annotate_tree(dates,
                             phylogeny_nodes,
                             taxa,
                             descr_years,
-                            tree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre"):
+                            tree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre",
+                            keep_all_dates=False):
+
     """Build an ETE3 tree containing the Open Tree of Life and annotate it with extra information to be used in topology resolution and dating.
     Removes nodes marked as "extinct" or "extinct_inherited" in the Open Tree Taxonomy."
 
@@ -129,14 +131,13 @@ def build_and_annotate_tree(dates,
 
     count = 0
 
-    fout = open("names_all.csv",'w')
-
     extinct_nodes = set()
     # add features to tree nodes: taxonomy level, degree, date (Mya, *not* branch length)
     for node in tre.traverse(strategy='preorder'):
         # get OTT identifier (if the node is not only a most recent common ancestor) and look it up in the OT taxonomy
         node.name = node.name.strip("'")
         node.name = node.name.strip("_")
+        node.name = node.name.replace(',', "")   # remove commas in node names
         descr_year = None
         if node.name[:4] == "mrca":
             tx_level = "mrca"
@@ -179,32 +180,42 @@ def build_and_annotate_tree(dates,
             node.add_feature("ph_tx", "TX")
 
         date = None
+        sources = None
         if ott_name in dates['node_ages']:
             ages = [float(source['age']) for source in dates['node_ages'][ott_name]]
-            ages.sort()
-
-            num_ages = len(ages)
-            midpoint = int((num_ages-1)/2)
-            if num_ages % 2 == 0:
-                # assume num_ages > 0 or we wouldn't have got here
-                median_age = (ages[midpoint] + ages[midpoint+1]) / 2
+            if keep_all_dates:
+                sources = [source['source_id'] for source in dates['node_ages'][ott_name]]
+                date = ages
             else:
-                median_age = ages[midpoint]
+                ages.sort()
 
-            if node.is_leaf():
-                logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
+                num_ages = len(ages)
+                midpoint = int((num_ages-1)/2)
+                if num_ages % 2 == 0:
+                    # assume num_ages > 0 or we wouldn't have got here
+                    median_age = (ages[midpoint] + ages[midpoint+1]) / 2
+                else:
+                    median_age = ages[midpoint]
 
-            if not node.is_leaf() and median_age < 0.000001:
-                logger.warning("Warning: computed date of zero on interior node %s; instead, setting date for this node to None" % node.name)
-            else:
-                date = median_age
+                if node.is_leaf():
+                    logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
+
+                if not node.is_leaf() and median_age < 0.000001:
+                    logger.warning("Warning: computed median age of zero on interior node %s; instead, setting date for this node to None" % node.name)
+                else:
+                    date = median_age
         elif node.is_leaf():
-            date = 0
+            if keep_all_dates:
+                date = [0]
+            else:
+                date = 0
         node.add_feature("date", date)
         node.add_feature("imputed_date", False)
+        if keep_all_dates:
+            node.add_feature("date_sources", sources)
 
         if tx_levels[tx_level] > 0 and tx_levels[tx_level] <= tx_levels["species group"]:
-            genus, species = get_genus_and_species(node.name,fout)
+            genus, species = get_genus_and_species(node.name)
             if species == "extinct":
                 extinct_nodes.add(node)
                 continue
@@ -218,7 +229,6 @@ def build_and_annotate_tree(dates,
             logger.info("%d nodes annotated" % count)
 
     logger.info("Annotation complete. %d nodes annotated." % count)
-    fout.close()
 
     # remove things we noted as extinct (may include non-extinct nodes that we want to delete for other reasons)
     for node in extinct_nodes:

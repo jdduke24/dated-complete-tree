@@ -55,7 +55,7 @@ def remove_tree_below(node, root=True, to_delete=None):
 
 def remove_node_and_parents(node, subspecies_only=True):
     """Delete this node, and clean up the tree above it, such any mrca, no-rank, or below-species parents that have no children other than the chain
-    being deleted are also deleted.
+    being deleted are also deleted. If subspecies_only=False, will clean up all parents with no children, regardless of rank.
     """
     if node is None:
         return
@@ -182,6 +182,17 @@ def remove_subspecies(tre):
                 remove_node_and_parents(node)
 
 
+def remove_nonspecies_leaves(tre):
+    """Remove any leaf nodes that are of rank above species, e.g. empty genera."""
+    to_remove = []
+    for node in tre.traverse():
+        if node.is_leaf() and tx_levels[node.tx_level] != tx_levels["species"]:
+            to_remove.append(node)
+
+    for node in to_remove:
+        remove_node_and_parents(node, subspecies_only=False)
+
+
 def fix_polyphyly(tofix_dict, expand_parent_backbones=False):
     """Go through dictionary of nodes to be "fixed" and move each into the backbone associated with it."""
 
@@ -196,11 +207,6 @@ def fix_polyphyly(tofix_dict, expand_parent_backbones=False):
         # detach everything about to be moved from its parent
         inserts_size = len(tofix_dict[key][0])
         for i in range(inserts_size):
-            if len(tofix_dict[key][0][i].up.children) == 1:
-                if not tofix_dict[key][0][i].up.date:
-                    logger.info("While fixing, set %s to date 0 from None" % (tofix_dict[key][0][i].up.name))
-                    tofix_dict[key][0][i].up.date = 0
-
             tofix_dict[key][0][i].detach()
 
     for key in keys_to_remove:
@@ -289,7 +295,7 @@ def fix_polytomy(parent):
         new_sibling = random.choice(possible_siblings)
 
         if new_sibling is parent:
-            new_node = create_node("mrcap")
+            new_node = create_node("mrcapp")
             new_node.ancestral_rank = parent.ancestral_rank
             new_node.desc_rank = parent.desc_rank
             current_children = list(parent.children)
@@ -301,8 +307,13 @@ def fix_polytomy(parent):
 
         else:
 
-            new_node = insert_node(new_sibling.up, new_sibling, "mrcap")
+            new_node = insert_node(new_sibling.up, new_sibling, "mrcaps")
             new_node.add_child(node_to_move)
+
+            if tx_levels[node_to_move.desc_rank] > tx_levels[new_node.desc_rank]:
+                new_node.desc_rank = node_to_move.desc_rank
+            if tx_levels[node_to_move.desc_rank] > tx_levels[new_node.up.desc_rank]:
+                new_node.up.desc_rank = node_to_move.desc_rank
 
         possible_siblings.append(new_node)
         possible_siblings.append(node_to_move)

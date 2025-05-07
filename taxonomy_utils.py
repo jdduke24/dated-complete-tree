@@ -109,7 +109,7 @@ cf_name = set([9])
 
 initial_cf_name = set([6])
 
-def get_genus_and_species(name, fout):
+def get_genus_and_species(name):
     """Take a node name for a species (or species subgroup or group) from the Open Tree of Life, and
     return a tuple with our best guess for the genus name and species name.
     """
@@ -132,9 +132,5 @@ def get_genus_and_species(name, fout):
             elif i in initial_cf_name:
                 genus =  m.group(2)
                 species = m.group(2) + " " + m.group(3)
-
-            if i != 9:
-                fout.write("%d,%s,%s,%s\n" % (i, genus, species, name))
-            break
 
     return (genus, species)

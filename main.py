@@ -56,6 +56,7 @@ def generate_trees(args):
         if args.maintain_species_set:
             random.seed(100)
         tree_fixing.remove_subspecies(whole_tre)
+        tree_fixing.remove_nonspecies_leaves(whole_tre)
 
         #####################################################################################################################
 
@@ -81,12 +82,16 @@ def generate_trees(args):
         tree_fixing.fix_polyphyly(genus_dict)
         tree_fixing.fix_polyphyly(nmp_genus_dict)
 
+        tree_fixing.remove_nonspecies_leaves(whole_tre)
+
         # Find and label backbone for step 3, after steps 1 an 2 already fixed.
         tree_labelling.populate_tofix_bkb(whole_tre, tofix_dict, [])
         fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
 
         # Finally, fix step 3.
         tree_fixing.fix_polyphyly(fix_dict, expand_parent_backbones=True)
+
+        tree_fixing.remove_nonspecies_leaves(whole_tre)
 
         # Last of all, polytomy resolution.
         tree_fixing.fix_all_polytomies(whole_tre)

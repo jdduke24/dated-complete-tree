@@ -23,7 +23,7 @@ def remove_inconsistent_dates(parent, mrad):
 
 
 def date_labelling(parent):
-    """Recurse in postorder through the tree, labelling each node with the found oldest date below it
+    """Recurse in postorder through the tree, labelling each node with the oldest date below it
     and the path length (number of nodes) to that date.
     Return value is: [oldest date found so far below this node, path length to it]
     """
@@ -98,3 +98,15 @@ def write_tree_with_branch_lengths(tre, filename):
     tre.write(outfile=filename,
                  format=1,
                  format_root_node=True)
+
+
+def compute_dates(tre, root_date):
+    """Fill in 'date' field with dates, given a tree with branch lengths in units of time. Intended for a tree given
+    branch lengths by phylocom bladj. Requires the date used by bladj on the root node.
+    """
+    tre.add_feature("date", root_date)
+    tre.add_feature("imputed_date", False)
+    for node in tre.traverse(strategy="preorder"):
+        if node.up:
+            node.add_feature("date", node.up.date - node.dist)
+            node.add_feature("imputed_date", False)
