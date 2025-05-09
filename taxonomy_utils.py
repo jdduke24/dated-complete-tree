@@ -101,11 +101,11 @@ name_regex.append("^(" + normal_name + "+)_(" + anything + "+)_" + ottid + "$")
 # 16. with some non-basic-Genus text: BL#AH_ott1234
 name_regex.append("^(" + anything + "+)_" + ottid + "$")
 
-standard_name = set([1,4,8,10,11,13,14,15])
+standard_name = set([1,4,8,9,10,11,14,15])
 
 single_name = set([2,3,5,7,12,16])
 
-cf_name = set([9])
+cf_name = set([13])
 
 initial_cf_name = set([6])
 
@@ -120,17 +120,22 @@ def get_genus_and_species(name):
             if i == 0:
                 genus = "extinct"
                 species = "extinct"
+                break
             elif i in standard_name:
                 genus = m.group(1)
                 species = m.group(1) + " " + m.group(2)
+                break
             elif i in single_name:
                 genus =  m.group(1)
                 species = m.group(1)
+                break
             elif i in cf_name:
                 genus =  m.group(1)
                 species = m.group(1) + " " + m.group(2) + m.group(3)
+                break
             elif i in initial_cf_name:
                 genus =  m.group(2)
                 species = m.group(2) + " " + m.group(3)
+                break
 
     return (genus, species)

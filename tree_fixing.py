@@ -75,6 +75,8 @@ def remove_node_and_parents(node, subspecies_only=True):
             remove_node_and_parents(parent, subspecies_only)
 
 
+# Tree topolgy adjustment functions:
+
 def remove_subspecies(tre):
     """Remove any subspecies, varieties, formae etc from the tree. If there are subspecies with no species node, keep one of the subspecies
     and promote it to species rank.
@@ -84,7 +86,7 @@ def remove_subspecies(tre):
     species_nodes = []
     species_names = set()
     for node in tre.traverse():
-        if node.tx_level == "species":
+        if tx_levels[node.tx_level] == tx_levels["species"]:
             species_nodes.append(node)
             species_names.add(node.species_name)
 
@@ -234,7 +236,7 @@ def fix_polyphyly(tofix_dict, expand_parent_backbones=False):
                 # we haven't seen this genus before - so this node can be put in a random place in the backbone
                 backbone_size = len(tofix_dict[key][1])
                 child = tofix_dict[key][1][random.randint(0,backbone_size-1)]
-                if node_to_move.tx_level == "species":
+                if tx_levels[node_to_move.tx_level] == tx_levels["species"]:
                     genera_found[node_to_move.genus_name] = node_to_move
             else:
                 # we have seen this genus before - so put this node with the others of the same genus to ensure monophyly
