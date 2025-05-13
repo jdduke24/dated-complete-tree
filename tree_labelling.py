@@ -102,9 +102,9 @@ def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root, kingdom=
         if genus_name in nmp_genus_dict and len(nmp_genus_dict[genus_name][1]) > 0:
             nmp_genus_dict[genus_name][1].append(parent)
             if parent.info is None:
-                parent.info = "NMP PAR BKB %s" % genus_name
+                parent.info = "NMP EX BKB %s" % genus_name
             else:
-                parent.info += "NMP PAR BKB %s" % genus_name
+                parent.info += "NMP EX BKB %s" % genus_name
 
     return (genera_found, species_found)
 
@@ -163,6 +163,27 @@ def populate_tofix_dict(parent, tofix_dict, nmp_genus_dict, kingdom="Other"):
         populate_tofix_dict(child, tofix_dict, nmp_genus_dict, kingdom)
 
 
+def oth_backbone_type(child, parent, backbone_rank):
+    """Determine if the node "child" should be part of a backbone for a taxonomic node.
+    A backbone node could be:
+        1. an MRCA node whose ancestral rank is higher than we are constructing a backbone for.
+        2. A non-MRCA node of equal or higher rank than we are constructing a backbone for.
+        3. A non-MRCA node whose rank is less than the backbone rank, but with a parent whose ancestral rank
+          is higher than both this node and the backbone rank.
+    """
+    if (tx_levels[child.tx_level] < 0 and tx_levels[child.ancestral_rank] > tx_levels[backbone_rank]):
+        return 1
+    elif tx_levels[child.tx_level] >= tx_levels[backbone_rank]:
+        return 2
+    elif parent and (tx_levels[child.tx_level] > 0 and
+                     tx_levels[child.tx_level] < tx_levels[backbone_rank] and
+                     tx_levels[parent.ancestral_rank] > tx_levels[child.tx_level] and
+                     tx_levels[parent.ancestral_rank] > tx_levels[backbone_rank]):
+        return 3
+    else:
+        return None
+
+
 def populate_tofix_bkb(parent, tofix_dict, current_roots, root_call=True):
     """Populate the possible backbone for each OTH FIX node. The backbone consists of anywhere under the same parent
     that is not already labelled and GR or NMP, and is of an appropriate rank.
@@ -174,57 +195,48 @@ def populate_tofix_bkb(parent, tofix_dict, current_roots, root_call=True):
     The list current_roots maintains a list of OTH PARENT keys for the tofix_dict, into which the current node may
     be inserted.
     """
+
     if root_call:
-        # first call only; repeat of the contents of the loop below
-        if parent.info == "OTH PARENT" and (tx_levels[parent.tx_level] < 0  or tx_levels[parent.tx_level] >= tx_levels["subtribe"]):
-            # never recurse through a genus or below
+        # first call only
+        if parent.info and parent.info[:10] == "OTH PARENT" and (tx_levels[parent.tx_level] < 0  or tx_levels[parent.tx_level] > tx_levels["genus"]):
+            # current_roots maintains a list of this node and the OTH PARENT nodes above this one. These nodes
+            # will have their backbones populated as we go along. If this node is suitable for a backbone of the
+            # current parent, it will be suitable for parents above this one too.
+            # Assume nothing is going to go above the root.
             current_roots.append(parent)
-            populate_tofix_bkb(parent, tofix_dict, current_roots, False)
             for rank in tofix_dict[parent]:
                 tofix_dict[parent][rank][2] = list(current_roots)
-            current_roots.pop()
-
-        if (parent.info is None or parent.info == "OTH PARENT") and parent.ph_tx == "PH":
-            for root in current_roots:
-                for rank in tofix_dict[root]:
-                    if (tx_levels[parent.tx_level] < 0 and tx_levels[parent.ancestral_rank] > tx_levels[rank]) or tx_levels[parent.tx_level] >= tx_levels[rank]:
-                        tofix_dict[root][rank][1].append(parent)
-                        if parent.info is None:
-                            parent.info = "OTH BKB %s %s" % (root.name, rank)
-                        else:
-                            parent.info += "OTH BKB %s %s" % (root.name, rank)
-            if tx_levels[parent.tx_level] < 0  or tx_levels[parent.tx_level] >= tx_levels["subtribe"]:
-                # never recurse through a genus or below
-                populate_tofix_bkb(parent, tofix_dict, current_roots, False)
 
 
     for child in parent.children:
-        if child.info == "OTH PARENT" and (tx_levels[child.tx_level] < 0  or tx_levels[child.tx_level] >= tx_levels["subtribe"]):
-            # never recurse through a genus or below; those are handled in previous steps.
-            current_roots.append(child)
-            populate_tofix_bkb(child, tofix_dict, current_roots, False)
-            for rank in tofix_dict[child]:
-                tofix_dict[child][rank][2] = list(current_roots)
-            current_roots.pop()
-
-        if (child.info is None or child.info == "OTH PARENT") and child.ph_tx == "PH":
+        if ((child.info is None or child.info == "OTH PARENT") and (child.ph_tx == "PH" or child.ph_tx == "IN")):
             for root in current_roots:
                 for rank in tofix_dict[root]:
-                    if ((tx_levels[child.tx_level] < 0 and tx_levels[child.ancestral_rank] > tx_levels[rank])
-                            or tx_levels[child.tx_level] >= tx_levels[rank]
-                            or (tx_levels[child.tx_level] > 0 and tx_levels[child.tx_level] < tx_levels[rank] and tx_levels[parent.ancestral_rank] > tx_levels[child.tx_level] and tx_levels[parent.ancestral_rank] > tx_levels[rank])):
+                    bkb_type = oth_backbone_type(child, parent, rank)
+                    if bkb_type:
                         tofix_dict[root][rank][1].append(child)
                         if child.info is None:
-                            child.info = "OTH BKB %s %s" % (root.name, rank)
+                            child.info = "OTH BKB %d %s %s" % (bkb_type, root.name, rank)
                         else:
-                            child.info += "OTH BKB %s %s" % (root.name, rank)
-            if tx_levels[child.tx_level] < 0  or tx_levels[child.tx_level] >= tx_levels["subtribe"]:
-                # never recurse through a genus or below
-                populate_tofix_bkb(child, tofix_dict, current_roots, False)
+                            child.info += "\nOTH BKB %d %s %s" % (bkb_type, root.name, rank)
 
-        elif ((child.info is None or child.info[:3] == "NMP")
-                  and (parent.info is not None and parent.info[:3] == "OTH")
-                  and (child.ph_tx == "PH" or child.ph_tx == "IN")):
+            if tx_levels[child.tx_level] < 0  or tx_levels[child.tx_level] > tx_levels["genus"]:
+                # never recurse through a genus or below, or through an inserted node (which at this stage must
+                # have come from NMP fixing, so going any further would be interrupting a monophyletic group).
+                if child.info and child.info[:10] == "OTH PARENT":
+                    current_roots.append(child)
+                    for rank in tofix_dict[child]:
+                        tofix_dict[child][rank][2] = list(current_roots)
+
+                if child.ph_tx == "PH":
+                    populate_tofix_bkb(child, tofix_dict, current_roots, False)
+
+                if child.info and child.info[:10] == "OTH PARENT":
+                    current_roots.pop()
+
+        elif ((child.info is None or child.info[:3] == "NMP") and
+              (parent.info is not None and parent.info[:3] == "OTH") and
+              (child.ph_tx == "PH" or child.ph_tx == "IN")):
             # root node of a NMP group can be in backbone, because we insert above it
             for root in current_roots:
                 for rank in tofix_dict[root]:
@@ -234,14 +246,13 @@ def populate_tofix_bkb(parent, tofix_dict, current_roots, root_call=True):
                         used_rank = "genus"
                     else:
                         used_rank = rank
-                    if ((tx_levels[child.tx_level] < 0 and tx_levels[child.ancestral_rank] > tx_levels[used_rank])
-                            or tx_levels[child.tx_level] >= tx_levels[used_rank]
-                            or (tx_levels[child.tx_level] > 0 and tx_levels[child.tx_level] < tx_levels[rank] and tx_levels[parent.ancestral_rank] > tx_levels[child.tx_level] and tx_levels[parent.ancestral_rank] > tx_levels[rank])):
+                    bkb_type = oth_backbone_type(child, parent, used_rank)
+                    if bkb_type:
                         tofix_dict[root][rank][1].append(child)
                         if child.info is None:
-                            child.info = "OTH EX BKB %s %s" % (root.name, rank)
+                            child.info = "OTH EX BKB %d %s %s" % (bkb_type, root.name, rank)
                         else:
-                            child.info += "OTH EX BKB %s %s" % (root.name, rank)
+                            child.info += "\nOTH EX BKB %d %s %s" % (bkb_type, root.name, rank)
 
 
 def process_tofix_bkb(tofix_dict):
