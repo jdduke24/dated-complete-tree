@@ -16,7 +16,7 @@ tx_levels = {
                 'infraspecificname':2,
                 'subspecies':2,
                 # species
-                'species':3, 'species (promoted)':3, 'species subgroup':4, 'species group':5,
+                'species':3, 'species (promoted)':3, 'species (imputed)':3, 'species subgroup':4, 'species group':5,
                 # section in plants
                 'plantsubsection':6, 'plantsection':7,
                 # genus
@@ -51,7 +51,7 @@ anything = r"[A-Za-z0-9αβγδεμθ\.,/&#?=:()<>+*_\[\]\-]"
 ottid = r"(ott[0-9]+)"
 
 # 0. standard name with x (extinct): x_Genus_species_ott1234. Mark as extinct and ignore.
-name_regex.append("^x_" + normal_name + "+_" + normal_name + "+_" + ottid + "$")
+name_regex.append("^x_(" + normal_name + "+)_(" + normal_name + "+)_" + ottid + "$")
 
 # 1. uncultured with sp. at end: uncultured_BL#AH_sp._ott1234. Use whole name as species; whole name without sp. as genus.
 name_regex.append("^[Uu]ncultured_(?:Candidatus_)?(" + anything + r"+)_(sp\.)_" + ottid + "$")
@@ -109,7 +109,7 @@ cf_name = set([13])
 
 initial_cf_name = set([6])
 
-def get_genus_and_species(name):
+def get_genus_and_species(name, ignore_extinct=True):
     """Take a node name for a species (or species subgroup or group) from the Open Tree of Life, and
     return a tuple with our best guess for the genus name and species name.
     """
@@ -117,9 +117,13 @@ def get_genus_and_species(name):
     for i, regex in enumerate(name_regex):
         m = re.search(name_regex[i], name)
         if m:
-            if i == 0:
+            if i == 0 and ignore_extinct:
                 genus = "extinct"
                 species = "extinct"
+                break
+            elif i == 0: # include extinct
+                genus = m.group(1)
+                species = m.group(1) + " " + m.group(2)
                 break
             elif i in standard_name:
                 genus = m.group(1)

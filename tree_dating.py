@@ -1,4 +1,6 @@
 import copy
+import gc
+import numpy as np
 
 import logging
 logger = logging.getLogger(__name__)
@@ -22,42 +24,223 @@ def remove_inconsistent_dates(parent, mrad):
         remove_inconsistent_dates(child, next_mrad)
 
 
+def strip_undated_nodes(tre):
+    """Return a copy of the input tree cut down to only dated nodes."""
+
+    stripped_tre = tre.copy()
+
+    nodes_to_remove = []
+    for node in stripped_tre.traverse(strategy="preorder"):
+        if node == stripped_tre:
+            continue
+
+        if not node.date:
+            nodes_to_remove.append(node)
+
+    for node in nodes_to_remove:
+        parent = node.up
+
+        for child in node.get_children():
+            parent.add_child(child.detach())
+
+        node.detach()
+
+    return stripped_tre
+
+
+def use_shortest_path(x):
+    """Key function for use in max function in date_labelling, so that max uses the shortest path as a tiebreaker."""
+    return [x[0], -x[1]]
+
+
 def date_labelling(parent):
     """Recurse in postorder through the tree, labelling each node with the oldest date below it
-    and the path length (number of nodes) to that date.
-    Return value is: [oldest date found so far below this node, path length to it]
+    and the path length (number of nodes) to that date. If the oldest date is a tie (usually 0),
+    we could choose the longest path or the shortest path to it. This labels nodes with both.
+
+    Return value is: [oldest date found so far below this node, longest path length to it],
+                     [oldest date found so far below this node, shortest path length to it]
     """
     if parent.is_leaf():
         if parent.date != 0:
             logger.warning("Leaf node %s has non-zero date." % parent.name)
-        oldest_path = [parent.date, 0]
     else:
-        oldest_path = [0, 0]
+        oldest_path_long = [0, -1e8]
+        oldest_path_short = [0, 1e8]
         for child in parent.children:
-            oldest_path = max(oldest_path, date_labelling(child))
-
-    parent.add_feature("oldest_path", copy.deepcopy(oldest_path))
+            new_path_long, new_path_short = date_labelling(child)
+            oldest_path_long = max(oldest_path_long, new_path_long)
+            oldest_path_short = max(oldest_path_short, new_path_short, key=use_shortest_path)
 
     if parent.date is None:
-        oldest_path[1] += 1
+        # only bother with label if there is no date here
+        parent.oldest_path_long = copy.copy(oldest_path_long)
+        parent.oldest_path_short = copy.copy(oldest_path_short)
+        oldest_path_long[1] += 1
+        oldest_path_short[1] += 1
     else:
-        oldest_path = [parent.date, 1]
+        # if there is a date, doesn't matter what was received; just return this date
+        oldest_path_long = [parent.date, 1]
+        oldest_path_short = [parent.date, 1]
 
-    return oldest_path
+    return oldest_path_long, oldest_path_short
 
 
-def impute_missing_dates(tre):
+def label_older_descendants(parent):
+    """Labels each node with a list of descendant nodes that have dates older than its own."""
+
+    descendants = []
+
+    for child in parent.children:
+        child_descendants = label_older_descendants(child)
+        descendants.extend(child_descendants)
+        # ignore node if is has no date (None) or a date of 0
+        if child.date:
+            descendants.append(child)
+
+    # store list of descendant nodes with an older date than this node
+    if parent.date:
+        parent.older_descendants = [
+            child for child in descendants if child.date > parent.date
+        ]
+
+    return descendants
+
+
+def build_dq_dict(tre):
+    """Take a tree labelled by the get_older_descendants function and builds a dictionary. The keys
+    are the inconsistent nodes. The values are a list: [set of older descendants,
+                                                        set of younger ancestors,
+                                                        pointer to equivalent node in whole tree]
+    """
+
+    dq_dict = {}
+
+    for node in tre.traverse():
+        if node == tre:
+            # ignore root node; we assume this is correct
+            continue
+
+        if node.date and len(node.older_descendants) > 0:
+            for desc_node in node.older_descendants:
+                if node.name not in dq_dict:
+                    dq_dict[node.name] = [set([]), set([]), node]
+                if desc_node.name not in dq_dict:
+                    dq_dict[desc_node.name] = [set([]), set([]), desc_node]
+
+                dq_dict[node.name][0].add(desc_node.name)
+                dq_dict[desc_node.name][1].add(node.name)
+
+    return dq_dict
+
+
+def dq_date_removal(tre):
+    """Remove dates from nodes such that as few dates are removed as possible to create a consistent set of dates
+    on the tree.
+    """
+
+    dq_dict = build_dq_dict(tre)
+
+    dq_counts = {}
+    for key_node_name in dq_dict:
+        for node_name in dq_dict[key_node_name][0]:
+            if node_name not in dq_counts:
+                dq_counts[node_name] = 0
+            dq_counts[node_name] += 1
+
+        for node_name in dq_dict[key_node_name][1]:
+            if node_name not in dq_counts:
+                dq_counts[node_name] = 0
+            dq_counts[node_name] += 1
+
+    dq_counts_info = []
+    for node_name in dq_counts:
+        dq_counts_info.append([dq_counts[node_name], dq_dict[node_name][2]])
+
+    def tuple_value(x):
+        if x[1].name[:4] == "mrca":
+            mrca = 1
+        else:
+            mrca = 0
+
+        return (x[0], mrca, -x[1].date)
+
+    max_count = max(dq_counts_info, key=tuple_value)
+
+    while max_count[0] > 0:
+        node_to_blank = max_count[1]
+
+        node_to_blank.date = None
+
+        dq_counts_info.remove(max_count)
+
+        for j in range(len(dq_counts_info)):
+            key_node_name = dq_counts_info[j][1].name
+
+            if node_to_blank.name in dq_dict[key_node_name][0]:
+                dq_dict[key_node_name][0].remove(node_to_blank.name)
+                dq_counts_info[j][0] -= 1
+                continue
+
+            if node_to_blank.name in dq_dict[key_node_name][1]:
+                dq_dict[key_node_name][1].remove(node_to_blank.name)
+                dq_counts_info[j][0] -= 1
+
+        max_count = max(dq_counts_info, key=tuple_value)
+
+
+def impute_missing_dates(tre, l=1, m=0):
     """Traverse the tree in preorder, giving each undated node a date spaced along the path between between
     its parent (which always has a date, since this is preorder traversal) and the oldest date found below
     it (as labelled by the date_labelling function). Assumes root node is dated.
+
+    When the oldest date beneath is a tie (usually because the oldest date is 0), the tie can be broken
+    by using the longest path or the shortest path. This function computes both versions, then interpolates
+    between the two solutions based on the parameter l:
+        date = l * date_from_longest_path + (1-l) * date_from_shortest_path
+
+    In addition, interpolation along a path can use equal spacing (m=0), or spacing that biases dates older
+    (m > 0) or younger (m < 0). Uses spacing along an exponential function, i.e. y = exp(m*x).
+    Values of m between -2 and 2 are pretty sensible.
     """
     for node in tre.traverse(strategy="preorder"):
-        if node.is_root():
-            node.add_feature("imputed_date",False)
+        if node is tre:
+            node.imputed_date = False
             continue
 
         if node.date is None:
-            node.date = node.up.date - (node.up.date - node.oldest_path[0]) / (node.oldest_path[1]+1)
+            if node.up.imputed_date:
+                if node.up.oldest_path_long[0] == node.oldest_path_long[0] and node.up.oldest_path_long[1] == node.oldest_path_long[1]+1:
+                    node.date_above_long = node.up.date_above_long
+                    node.mu_spacing_long = node.up.mu_spacing_long
+                else:
+                    node.date_above_long = node.up.date_long
+                    mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
+                    node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
+
+                if node.up.oldest_path_short[0] == node.oldest_path_short[0] and node.up.oldest_path_short[1] == node.oldest_path_short[1]+1:
+                    node.date_above_short = node.up.date_above_short
+                    node.mu_spacing_short = node.up.mu_spacing_short
+                else:
+                    node.date_above_short = node.up.date_short
+                    mu_spacing_short = np.exp(m * np.linspace(0, 1, node.oldest_path_short[1]+1))
+                    node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
+
+            else:
+                node.date_above_long = node.up.date
+                node.date_above_short = node.up.date
+
+                mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
+                mu_spacing_short = np.exp(m * np.linspace(0, 1, node.oldest_path_short[1]+1))
+
+                node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
+                node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
+
+            node.date_long  = node.date_above_long - (node.date_above_long - node.oldest_path_long[0])  * node.mu_spacing_long[-(node.oldest_path_long[1]+1)]
+            node.date_short = node.date_above_short - (node.date_above_short - node.oldest_path_short[0]) * node.mu_spacing_short[-(node.oldest_path_short[1]+1)]
+
+            node.date = l*node.date_long + (1-l)*node.date_short
+
             node.imputed_date = True
 
 
@@ -93,7 +276,7 @@ def compute_branch_lengths(tre, round_numbers=False):
 def write_tree_with_branch_lengths(tre, filename):
     """Write out dated tree in Newick format (suitable for OneZoom). Branch lengths rounded
     to 4 sig figs to save space in the text file."""
-    compute_branch_lengths(tre, round_numbers=True)
+    compute_branch_lengths(tre, round_numbers=False)
 
     tre.write(outfile=filename,
                  format=1,
@@ -101,12 +284,12 @@ def write_tree_with_branch_lengths(tre, filename):
 
 
 def compute_dates(tre, root_date):
-    """Fill in 'date' field with dates, given a tree with branch lengths in units of time. Intended for a tree given
-    branch lengths by phylocom bladj. Requires the date used by bladj on the root node.
+    """Fill in 'date' field with dates, given a tree with branch lengths in units of time. Requires
+    a date for the root node.
     """
-    tre.add_feature("date", root_date)
-    tre.add_feature("imputed_date", False)
+    tre.date = root_date
+    tre.imputed_date = False
     for node in tre.traverse(strategy="preorder"):
         if node.up:
-            node.add_feature("date", node.up.date - node.dist)
-            node.add_feature("imputed_date", False)
+            node.date = node.up.date - node.dist
+            node.imputed_date = False

@@ -100,7 +100,8 @@ def build_and_annotate_tree(dates,
                             taxa,
                             descr_years,
                             tree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre",
-                            keep_all_dates=False):
+                            keep_all_dates=False,
+                            ignore_extinct=True):
 
     """Build an ETE3 tree containing the Open Tree of Life and annotate it with extra information to be used in topology resolution and dating.
     Removes nodes marked as "extinct" or "extinct_inherited" in the Open Tree Taxonomy."
@@ -115,6 +116,7 @@ def build_and_annotate_tree(dates,
 
     tree_string = open(tree_filename,"r").read()
     tree_string = tree_string.replace("''", "")  # remove '' in names (the tree loader will remove the quotes which wrap single-quoted names)
+    tree_string = tree_string.replace(":", "")  # remove : in names
     tree_string = tree_string.replace('"', "")   # remove all double-quote characters
     tree_string = tree_string.replace('“', "")   # remove all double-quote characters
     tree_string = tree_string.replace('”', "")   # remove all double-quote characters
@@ -132,7 +134,7 @@ def build_and_annotate_tree(dates,
     count = 0
 
     extinct_nodes = set()
-    # add features to tree nodes: taxonomy level, degree, date (Mya, *not* branch length)
+    # add features to tree nodes: taxonomy level, degree, date (Mya)
     for node in tre.traverse(strategy='preorder'):
         # get OTT identifier (if the node is not only a most recent common ancestor) and look it up in the OT taxonomy
         node.name = node.name.strip("'")
@@ -142,7 +144,9 @@ def build_and_annotate_tree(dates,
         if node.name[:4] == "mrca":
             tx_level = "mrca"
             ott_name = node.name
-        elif node.name[:14] == "uncultured_ott" or node.name[:16] == "unidentified_ott":
+            if not ignore_extinct:
+                node.add_feature("extinct", False)
+        elif node.name[:14] == "uncultured_ott" or node.name[:16] == "unidentified_ott" or "intergeneric_hybrids" in node.name:
             extinct_nodes.add(node)
             ott_name = node.name
             continue
@@ -153,10 +157,16 @@ def build_and_annotate_tree(dates,
                 ott_name = node.name.split('_')[-1]
             ott_uid = int(ott_name[3:])
 
-            if taxa[ott_uid][1]:
-                # extinct, ignore
-                extinct_nodes.add(node)
-                continue
+            if ignore_extinct:
+                if taxa[ott_uid][1]:
+                    # extinct or extinct_inherited
+                    extinct_nodes.add(node)
+                    continue
+            else:
+                if taxa[ott_uid][1] or node.name[:1] == 'x_':
+                    node.add_feature("extinct", True)
+                else:
+                    node.add_feature("extinct", False)
 
             tx_level = taxa[ott_uid][0]
 
@@ -171,13 +181,17 @@ def build_and_annotate_tree(dates,
                 descr_year = descr_years[ott_uid]
 
         node.add_feature("tx_level", tx_level)
-        node.add_feature("descr_year", descr_year)
+        # node.add_feature("descr_year", descr_year)
 
         if ott_name in phylogeny_nodes:
             node.add_feature("ph_tx", "PH")
             #del phylogeny_nodes[ott_name]
         else:
             node.add_feature("ph_tx", "TX")
+            if not ignore_extinct and node.extinct:
+                # ignore extinct nodes from taxonomy
+                extinct_nodes.add(node)
+                continue
 
         date = None
         sources = None
@@ -214,8 +228,13 @@ def build_and_annotate_tree(dates,
         if keep_all_dates:
             node.add_feature("date_sources", sources)
 
+        if not ignore_extinct and node.extinct and node.date is None:
+            # ignore extinct nodes with no date
+            extinct_nodes.add(node)
+            continue
+
         if tx_levels[tx_level] > 0 and tx_levels[tx_level] <= tx_levels["species group"]:
-            genus, species = get_genus_and_species(node.name)
+            genus, species = get_genus_and_species(node.name, ignore_extinct)
             if species == "extinct":
                 extinct_nodes.add(node)
                 continue
@@ -232,7 +251,7 @@ def build_and_annotate_tree(dates,
 
     # remove things we noted as extinct (may include non-extinct nodes that we want to delete for other reasons)
     for node in extinct_nodes:
-        logger.info("Attempting to delete node in extinct_nodes: %s." % node.name)
+        logger.info("Deleting extinct or unwanted node %s and tree below it." % node.name)
         tree_fixing.remove_tree_below(node)
         tree_fixing.remove_node_and_parents(node, False)
 

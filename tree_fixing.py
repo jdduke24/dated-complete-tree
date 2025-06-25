@@ -1,6 +1,6 @@
 from taxonomy_utils import tx_levels
+from taxonomy_utils import get_genus_and_species
 import ete3
-import random
 
 import logging
 logger = logging.getLogger(__name__)
@@ -10,14 +10,23 @@ logger = logging.getLogger(__name__)
 # create a new node
 def create_node(name):
     new_node = ete3.TreeNode(name=name)
-    new_node.add_feature("tx_level", "mrca")
-    new_node.add_feature("desc_year", None)
-    new_node.add_feature("ancestral_rank", None)
-    new_node.add_feature("desc_rank", None)
-    new_node.add_feature("ph_tx", "IN")
-    new_node.add_feature("date", None)
-    new_node.add_feature("imputed_date", False)
-    new_node.add_feature("info", None)
+    # new_node.add_feature("tx_level", "mrca")
+    # new_node.add_feature("desc_year", None)
+    # new_node.add_feature("ancestral_rank", None)
+    # new_node.add_feature("desc_rank", None)
+    # new_node.add_feature("ph_tx", "IN")
+    # new_node.add_feature("date", None)
+    # new_node.add_feature("imputed_date", False)
+    # new_node.add_feature("info", None)
+
+    new_node.tx_level = "mrca"
+    new_node.desc_year = None
+    new_node.ancestral_rank = None
+    new_node.desc_rank = None
+    new_node.ph_tx = "IN"
+    new_node.date = None
+    new_node.imputed_date = False
+    new_node.info = None
 
     return new_node
 
@@ -77,7 +86,7 @@ def remove_node_and_parents(node, subspecies_only=True):
 
 # Tree topolgy adjustment functions:
 
-def remove_subspecies(tre):
+def remove_subspecies(tre, rng):
     """Remove any subspecies, varieties, formae etc from the tree. If there are subspecies with no species node, keep one of the subspecies
     and promote it to species rank.
     """
@@ -91,19 +100,15 @@ def remove_subspecies(tre):
             species_names.add(node.species_name)
 
     for node in species_nodes:
-        logger.debug("Removing all nodes below species node %s." % (node.name))
-        remove_tree_below(node)
-        node.date = 0
+        if len(node.children) > 0:
+            logger.debug("Removing all nodes below species node %s." % (node.name))
+            remove_tree_below(node)
+            node.date = 0
 
     # Deal with remaining nodes of rank below species.
     # First get lists of such nodes, in dictionaries where keys are the species names.
     subsp_dict = {}
     for node in tre.traverse():
-        # if node.tx_level == "no rank - terminal":
-        #     if node.species_name not in norank_terminals:
-        #         norank_terminals[node.species_name] = []
-        #     norank_terminals[node.species_name].append(node)
-
         if (node.tx_level == "no rank - terminal" or
                 node.tx_level == "subspecies" or
                 node.tx_level == "varietas" or
@@ -164,7 +169,7 @@ def remove_subspecies(tre):
 
             # 3. finally, if there wasn't a good reason to keep a particular node from the duplicates, pick one at random to keep and promote it to species
             if sp_found is None:
-                keep = random.choice(subsp_dict[sp])
+                keep = subsp_dict[sp][rng.integers(len(subsp_dict[sp]))]
                 logger.info("Node %s kept and promoted to species from %s based on random choice." % (keep.name, keep.tx_level))
                 keep.tx_level = "species (promoted)"
                 keep.ancestral_rank = "species (promoted)"
@@ -184,6 +189,34 @@ def remove_subspecies(tre):
                 remove_node_and_parents(node)
 
 
+def impute_species_into_empty_taxa(tre):
+    """Finds empty higher-than-species taxa, and imputes a representative random species into them."""
+    new_parents = []
+    for node in tre.traverse():
+        if node.is_leaf() and tx_levels[node.tx_level] != tx_levels["species"]:
+            new_parents.append(node)
+
+    for node in new_parents:
+        nm_parts = node.name.split('_')
+        sp_name = ""
+        for part in nm_parts[:-1]:
+            sp_name += (part + "_")
+        sp_name += "sp._ott0000"
+
+        new_node = create_node(sp_name)
+        genus, species = get_genus_and_species(sp_name)
+        new_node.add_feature("genus_name", genus)
+        new_node.add_feature("species_name", species)
+        new_node.tx_level = "species (imputed)"
+        new_node.ph_tx = "IM"
+        new_node.date = 0
+
+        node.date = None
+        node.add_child(new_node)
+
+        logger.info("Added representative species %s as a child of %s node %s. %s %s" % (sp_name, node.tx_level, node.name, genus, species))
+
+
 def remove_nonspecies_leaves(tre):
     """Remove any leaf nodes that are of rank above species, e.g. empty genera."""
     to_remove = []
@@ -195,7 +228,7 @@ def remove_nonspecies_leaves(tre):
         remove_node_and_parents(node, subspecies_only=False)
 
 
-def fix_polyphyly(tofix_dict, expand_parent_backbones=False):
+def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
     """Go through dictionary of nodes to be "fixed" and move each into the backbone associated with it."""
 
     keys_to_remove = []
@@ -216,10 +249,10 @@ def fix_polyphyly(tofix_dict, expand_parent_backbones=False):
 
     # Go through the candidate nodes in random order and insert them at random places into the backbone
     keys = list(tofix_dict.keys())
-    random.shuffle(keys) # NB: with a big list here, the number of random permutations is so great that most can never be generated!
+    rng.shuffle(keys) # NB: with a big list here, the number of random permutations is so great that most can never be generated!
     for key in keys:
         inserts = list(range(len(tofix_dict[key][0])))
-        random.shuffle(inserts)
+        rng.shuffle(inserts)
 
         # dictionary of genera already seen so we can keep species of the same genus together
         genera_found = {}
@@ -235,7 +268,7 @@ def fix_polyphyly(tofix_dict, expand_parent_backbones=False):
 
                 # we haven't seen this genus before - so this node can be put in a random place in the backbone
                 backbone_size = len(tofix_dict[key][1])
-                child = tofix_dict[key][1][random.randint(0,backbone_size-1)]
+                child = tofix_dict[key][1][rng.integers(backbone_size)]
                 if tx_levels[node_to_move.tx_level] == tx_levels["species"]:
                     genera_found[node_to_move.genus_name] = node_to_move
             else:
@@ -275,13 +308,16 @@ def fix_polyphyly(tofix_dict, expand_parent_backbones=False):
             count += 1
 
 
+
 # fix polytomy directly beneath given parent
-def fix_polytomy(parent):
+def fix_polytomy(parent, rng):
     if len(parent.children) <= 2:
         raise("Error: Trying to fix a non-polytomy")
 
-    # pick which children to move
-    nodes_to_move = random.sample(parent.children, len(parent.children)-2)
+    # pick which children to move - all but 2
+    nodes_to_move = parent.get_children()
+    del nodes_to_move[rng.integers(len(nodes_to_move))]
+    del nodes_to_move[rng.integers(len(nodes_to_move))]
 
     # detach them
     for node_to_move in nodes_to_move:
@@ -294,7 +330,7 @@ def fix_polytomy(parent):
     for i in range(len(nodes_to_move)):
         node_to_move = nodes_to_move[i]
 
-        new_sibling = random.choice(possible_siblings)
+        new_sibling = possible_siblings[rng.integers(len(possible_siblings))]
 
         if new_sibling is parent:
             new_node = create_node("mrcapp")
@@ -321,23 +357,25 @@ def fix_polytomy(parent):
         possible_siblings.append(node_to_move)
 
 
-def fix_all_polytomies(tre):
+def fix_all_polytomies(tre, rng):
     polytomies = []
     for node in tre.traverse(strategy='preorder'):
         if len(node.children) > 2:
             polytomies.append(node)
 
     for node in polytomies:
-        fix_polytomy(node)
+        fix_polytomy(node, rng)
 
 
-def delete_one_child_nodes(tre):
+def delete_one_child_nodes(tre, maintain_branch_lengths=False):
     one_child_nodes = []
     for node in tre.traverse(strategy="preorder"):
         if len(node.children) == 1:
             one_child_nodes.append(node)
 
     for node in one_child_nodes:
+        if maintain_branch_lengths:
+            node.children[0].dist += node.dist
         node.up.add_child(node.children[0].detach())
         node.detach()
         del node

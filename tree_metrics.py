@@ -18,20 +18,20 @@ def num_desc_leaves(parent):
         return leaves
 
 
-def accumulate_ed_scores(parent, running_sum, all_scores, root=True):
+def accumulate_ed_scores(parent, running_sum, all_scores, get_dict=True, root=True):
     if not root:
         running_sum += parent.dist/parent.desc_leaves
 
     parent.add_feature("ed_score", running_sum)
 
-    if parent.is_leaf():
+    if parent.is_leaf() and get_dict:
         all_scores[(parent.name, parent.domain, parent.kingdom, parent.phylum, parent.clas, parent.order, parent.family)] = running_sum
     else:
         for child in parent.children:
-            accumulate_ed_scores(child, running_sum, all_scores, False)
+            accumulate_ed_scores(child, running_sum, all_scores, get_dict, False)
 
 
-def get_ed_scores(dated_tre):
+def get_ed_scores(dated_tre, get_dict=True):
     # first, compute branch lengths
     for node in dated_tre.traverse():
         if node.up:
@@ -48,10 +48,13 @@ def get_ed_scores(dated_tre):
     num_desc_leaves(dated_tre)
 
     # finally, recurse through tree computing ED scores
-    all_scores = {}
-    accumulate_ed_scores(dated_tre, 0, all_scores)
+    if get_dict:
+        all_scores = {}
+        accumulate_ed_scores(dated_tre, 0, all_scores, True)
 
-    return all_scores
+        return all_scores
+    else:
+        accumulate_ed_scores(dated_tre, 0, {}, False)
 
 
 def add_ed_scores(dated_tre, existing_scores):
@@ -83,6 +86,23 @@ def write_ed_scores(scores, filename):
                                                         numpy.percentile(scores[key],75),
                                                         numpy.max(scores[key]),
                                                         len(scores[key])))
+
+
+def compute_pd(parent, ranks_to_save=None, results_dict=None):
+    """Compute total PD below each node. Assume the tree has branch lengths."""
+    pd = 0
+    for child in parent.children:
+        pd += compute_pd(child, ranks_to_save, results_dict)
+
+    parent.add_feature("pd", pd)
+
+    if ranks_to_save:
+        if parent.tx_level in ranks_to_save:
+            results_dict[(parent.name, parent.domain, parent.kingdom, parent.phylum, parent.clas, parent.order)] = (parent.num_dates/parent.child_tree_size,
+                                                                                                                    parent.num_leaves,
+                                                                                                                    pd)
+
+    return pd + parent.dist
 
 
 def compute_rf_distances(output_folder, output_tree_filename, n):
@@ -119,3 +139,63 @@ def compute_rf_distances(output_folder, output_tree_filename, n):
         gc.collect()
 
     fout.close()
+
+
+def date_labelling_guo(parent):
+    """Recurse in postorder through the tree, labelling each node with the oldest date below it
+    and the path length (number of nodes) to that date.
+    Return value is: [oldest date found so far below this node, path length to it]
+    """
+    if parent.is_leaf():
+        if parent.date != 0:
+            print("Leaf node with non-zero date")
+        oldest_paths = [[parent.date, 1]]
+        parent.oldest_paths = oldest_paths
+    else:
+        oldest_paths = []
+        for child in parent.children:
+            child_paths = date_labelling_guo(child)
+            for path in child_paths:
+                oldest_paths.append(path)
+
+        if parent.date is None:
+            parent.oldest_paths = oldest_paths
+            for path in oldest_paths:
+                path[1] += 1
+        else:
+            oldest_paths = [[parent.date, 1]]
+            parent.oldest_paths = oldest_paths
+
+    return oldest_paths
+
+
+def compute_ed_scores_guo(parent, ancestral_date, root=True):
+    ed_scores = []
+
+    if not root:
+        for path in parent.oldest_paths:
+            if path[1] != 0:
+                ed_scores.append(((ancestral_date-path[0])/path[1]) / parent.desc_leaves)
+
+    parent.add_feature("ed_scores_guo", ed_scores)
+
+    for child in parent.children:
+        if parent.date:
+            compute_ed_scores_guo(child, parent.date, False)
+        else:
+            compute_ed_scores_guo(child, ancestral_date, False)
+
+
+def sum_ed_scores_guo(parent, root=True):
+    i = 0
+    if not root:
+        for child in parent.children:
+            for j in range(len(child.ed_scores_guo)):
+                if len(parent.ed_scores_guo) == 1:
+                    child.ed_scores_guo[j] += parent.ed_scores_guo[0]
+                else:
+                    child.ed_scores_guo[j] += parent.ed_scores_guo[i]
+                i += 1
+
+    for child in parent.children:
+        sum_ed_scores_guo(child, False)

@@ -1,6 +1,7 @@
 import os
 import sys
 import gc
+import numpy as np
 
 import tree_loading
 import tree_labelling
@@ -10,7 +11,7 @@ import tree_dating
 import argparse
 import logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.DEBUG)
+logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.WARNING)
 
 #####################################################################################################################
 
@@ -20,6 +21,8 @@ def generate_trees(args):
         os.makedirs(args.output_folder)
 
     sys.setrecursionlimit(10000)
+
+    rng = np.random.default_rng(seed=1)
 
     # Load metadata for tree from Open Tree, Chronosynth and OneZoom
     dates, phylogeny_nodes, taxa, descr_years = tree_loading.load_metadata(date_cache=args.date_cache,
@@ -34,6 +37,9 @@ def generate_trees(args):
                                                                 descr_years,
                                                                 tree_filename=args.supertree)
 
+    tree_dating.label_older_descendants(whole_tre_unmodified)
+    tree_dating.dq_date_removal(whole_tre_unmodified)
+
     if args.compute_ed:
         import tree_metrics
         ed_scores = {}
@@ -42,9 +48,7 @@ def generate_trees(args):
         args.maintain_species_set = True
 
     if args.maintain_species_set:
-        import random
         import datetime
-        f_seeds = open("%s/seeds.txt" % args.output_folder, "wt")
 
     for n in range(args.num_trees):
         # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
@@ -54,17 +58,18 @@ def generate_trees(args):
         # Remove anything below species level (this includes promoting some subspecies to species if they are the only
         # example of their species)
         if args.maintain_species_set:
-            random.seed(100)
-        tree_fixing.remove_subspecies(whole_tre)
-        tree_fixing.remove_nonspecies_leaves(whole_tre)
+            rng = np.random.default_rng(seed=1)
+
+        tree_fixing.remove_subspecies(whole_tre, rng)
+        tree_fixing.impute_species_into_empty_taxa(whole_tre)
 
         #####################################################################################################################
 
         # Now, fixing the topology:
         if args.maintain_species_set:
             sd = datetime.datetime.now().timestamp()
-            f_seeds.write("%d,%f\n" % (n+1,sd))
-            random.seed(sd)
+            rng = np.random.default_rng(seed=sd)
+
         # First, do labelling for steps 1-3:
         #  - 1-2 are independent of each other; step 3 collects up nodes not labelled in 1-2.
         #  - tree is only labelled at this stage; modifications are made in tree_fixing functions.
@@ -79,25 +84,21 @@ def generate_trees(args):
 
         # Second, fix the topology based on the labels.
         # Fix steps 1 and 2.
-        tree_fixing.fix_polyphyly(genus_dict)
-        tree_fixing.fix_polyphyly(nmp_genus_dict)
-
-        tree_fixing.remove_nonspecies_leaves(whole_tre)
+        tree_fixing.fix_polyphyly(genus_dict, rng)
+        tree_fixing.fix_polyphyly(nmp_genus_dict, rng)
 
         # Find and label backbone for step 3, after steps 1 an 2 already fixed.
         tree_labelling.populate_tofix_bkb(whole_tre, tofix_dict, [])
         fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
 
         # Finally, fix step 3.
-        tree_fixing.fix_polyphyly(fix_dict, expand_parent_backbones=True)
-
-        tree_fixing.remove_nonspecies_leaves(whole_tre)
+        tree_fixing.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
 
         # Last of all, polytomy resolution.
-        tree_fixing.fix_all_polytomies(whole_tre)
+        tree_fixing.fix_all_polytomies(whole_tre, rng)
 
         # Optional - mainly here because it's good for OneZoom: remove one-child nodes. Gives a fully bifurcating tree.
-        tree_fixing.delete_one_child_nodes(whole_tre)
+        #tree_fixing.delete_one_child_nodes(whole_tre)
 
         #####################################################################################################################
 
