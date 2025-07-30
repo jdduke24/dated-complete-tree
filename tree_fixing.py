@@ -84,7 +84,7 @@ def remove_node_and_parents(node, subspecies_only=True):
             remove_node_and_parents(parent, subspecies_only)
 
 
-# Tree topolgy adjustment functions:
+# Tree topology adjustment functions:
 
 def remove_subspecies(tre, rng):
     """Remove any subspecies, varieties, formae etc from the tree. If there are subspecies with no species node, keep one of the subspecies

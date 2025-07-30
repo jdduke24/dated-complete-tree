@@ -1,6 +1,6 @@
 import gc
 import ete3
-import numpy
+import numpy as np
 
 import logging
 logger = logging.getLogger(__name__)
@@ -67,42 +67,94 @@ def add_ed_scores(dated_tre, existing_scores):
         existing_scores[key].append(new_scores[key])
 
 
-def write_ed_scores(scores, filename):
+def write_ed_scores(filename, scores):
     logger.info("Writing ED score distributions.")
     fout = open(filename, "w")
-    fout.write("leaf_label,domain,kingdom,phylum,class,order,family,mean,min,25pct,median,75pct,max,N\n")
+    fout.write("leaf_name\tdomain\tkingdom\tphylum\tclass\torder\tfamily\tmean\tmin\t25pct\tmedian\t75pct\tmax\tN\n")
     for key in scores:
-        fout.write("%s,%s,%s,%s,%s,%s,%s,%f,%f,%f,%f,%f,%f,%d\n" % (key[0] if "," not in key[0] else ('"' + key[0] + '"'),
-                                                        key[1],
-                                                        key[2],
-                                                        key[3],
-                                                        key[4],
-                                                        key[5],
-                                                        key[6],
-                                                        numpy.mean(scores[key]),
-                                                        numpy.min(scores[key]),
-                                                        numpy.percentile(scores[key],25),
-                                                        numpy.percentile(scores[key],50),
-                                                        numpy.percentile(scores[key],75),
-                                                        numpy.max(scores[key]),
-                                                        len(scores[key])))
+        fout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%d\n" % (key[0],
+                                                                                 key[1],
+                                                                                 key[2],
+                                                                                 key[3],
+                                                                                 key[4],
+                                                                                 key[5],
+                                                                                 key[6],
+                                                                                 np.mean(scores[key]),
+                                                                                 np.min(scores[key]),
+                                                                                 np.percentile(scores[key],25),
+                                                                                 np.percentile(scores[key],50),
+                                                                                 np.percentile(scores[key],75),
+                                                                                 np.max(scores[key]),
+                                                                                 len(scores[key])))
+    fout.close()
 
 
-def compute_pd(parent, ranks_to_save=None, results_dict=None):
+def compute_pd(parent):
     """Compute total PD below each node. Assume the tree has branch lengths."""
     pd = 0
     for child in parent.children:
-        pd += compute_pd(child, ranks_to_save, results_dict)
+        pd += compute_pd(child)
 
     parent.add_feature("pd", pd)
 
-    if ranks_to_save:
-        if parent.tx_level in ranks_to_save:
-            results_dict[(parent.name, parent.domain, parent.kingdom, parent.phylum, parent.clas, parent.order)] = (parent.num_dates/parent.child_tree_size,
-                                                                                                                    parent.num_leaves,
-                                                                                                                    pd)
-
     return pd + parent.dist
+
+
+def save_pd_for_clades(tre, pd_clades, pd_dict, dates_dict, spp_dict):
+    for node in tre.traverse():
+        if node.name in pd_clades:
+            pd_dict[node.name].append(node.pd)
+            dates_dict[node.name].append(node.date)
+            spp_dict[node.name].append(len(node.get_leaves()))
+
+
+def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
+    def list_to_tab_str(ls):
+        ls_str = ""
+        for item in ls[:-1]:
+            ls_str += str(item)
+            ls_str += '\t'
+        ls_str += str(ls[-1])
+
+        return ls_str
+
+    fout = open("%s_phyla.txt" % filename, "w")
+    fout.write("Clade\tspp.\tMean\tMin\t2.5pct\t16pct\t25pct\t50pct\t75pct\t84pct\t97.5pct\tMax\n")
+    for clade in pd_dict:
+        fout.write("%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n" % (clade,
+                                                                             spp_dict[clade][0],
+                                                                             np.mean(pd_dict[clade]),
+                                                                             np.percentile(pd_dict[clade], 0),
+                                                                             np.percentile(pd_dict[clade], 2.5),
+                                                                             np.percentile(pd_dict[clade], 16),
+                                                                             np.percentile(pd_dict[clade], 25),
+                                                                             np.percentile(pd_dict[clade], 50),
+                                                                             np.percentile(pd_dict[clade], 75),
+                                                                             np.percentile(pd_dict[clade], 84),
+                                                                             np.percentile(pd_dict[clade], 97.5),
+                                                                             np.percentile(pd_dict[clade], 100),
+                                                                             list_to_tab_str(pd_dict[clade])))
+
+    fout.close()
+
+    fout = open("%s_dates.txt" % filename, "w")
+    fout.write("Clade\tMean\tMin\t2.5pct\t16pct\t25pct\t50pct\t75pct\t84pct\t97.5pct\tMax\n")
+    for clade in dates_dict:
+        fout.write("%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n" % (clade,
+                                                                             spp_dict[clade][0],
+                                                                             np.mean(dates_dict[clade]),
+                                                                             np.percentile(dates_dict[clade], 0),
+                                                                             np.percentile(dates_dict[clade], 2.5),
+                                                                             np.percentile(dates_dict[clade], 16),
+                                                                             np.percentile(dates_dict[clade], 25),
+                                                                             np.percentile(dates_dict[clade], 50),
+                                                                             np.percentile(dates_dict[clade], 75),
+                                                                             np.percentile(dates_dict[clade], 84),
+                                                                             np.percentile(dates_dict[clade], 97.5),
+                                                                             np.percentile(dates_dict[clade], 100),
+                                                                             list_to_tab_str(dates_dict[clade])))
+
+    fout.close()
 
 
 def compute_rf_distances(output_folder, output_tree_filename, n):
@@ -199,3 +251,27 @@ def sum_ed_scores_guo(parent, root=True):
 
     for child in parent.children:
         sum_ed_scores_guo(child, False)
+
+
+def lineages_through_time(tre):
+    """Assumes all nodes are dated and have 0, 1 or 2 children. If leaf nodes have a date of 0, they
+    are extant species; if they have a date of more than zero, they are extinct."""
+
+    dates_list = []
+    nonimputed_dates = []
+    for node in tre.traverse():
+        if node.date > 0:
+            dates_list.append((node.date, len(node.children)-1))
+
+            if not node.imputed_date:
+                nonimputed_dates.append(-node.date)
+
+    dates_list.sort(reverse=True)
+
+    lineages = [2]
+    dates = [-dates_list[0][0]]
+    for i in range(1,len(dates_list)):
+        lineages.append(lineages[-1] + dates_list[i][1])
+        dates.append(-dates_list[i][0])
+
+    return dates, lineages, nonimputed_dates

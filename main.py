@@ -13,8 +13,6 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.WARNING)
 
-#####################################################################################################################
-
 
 def generate_trees(args):
     if not os.path.exists(args.output_folder):
@@ -40,6 +38,16 @@ def generate_trees(args):
     tree_dating.label_older_descendants(whole_tre_unmodified)
     tree_dating.dq_date_removal(whole_tre_unmodified)
 
+    if args.pd_clades:
+        pd_clades = [cld.strip() for cld in list(open(args.pd_clades))]
+        pd_dict = {}
+        dates_dict = {}
+        spp_dict = {}
+        for clade in pd_clades:
+            pd_dict[clade] = []
+            dates_dict[clade] = []
+            spp_dict[clade] = []
+
     if args.compute_ed:
         import tree_metrics
         ed_scores = {}
@@ -51,6 +59,8 @@ def generate_trees(args):
         import datetime
 
     for n in range(args.num_trees):
+        print("Tree number", n+1)
+
         # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
         # reloading everything
         whole_tre = whole_tre_unmodified.copy()
@@ -62,6 +72,9 @@ def generate_trees(args):
 
         tree_fixing.remove_subspecies(whole_tre, rng)
         tree_fixing.impute_species_into_empty_taxa(whole_tre)
+
+        tree_labelling.add_anc_ranks(whole_tre)
+        tree_labelling.add_desc_ranks(whole_tre)
 
         #####################################################################################################################
 
@@ -109,7 +122,7 @@ def generate_trees(args):
         # Date imputation
         tree_dating.remove_inconsistent_dates(whole_tre, whole_tre.date)
         tree_dating.date_labelling(whole_tre)
-        tree_dating.impute_missing_dates(whole_tre)
+        tree_dating.impute_missing_dates(whole_tre, useLnN=args.use_lnN_interpolation)
 
         # All nodes now dated - set dists in ete and write out tree.
         tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_%d.tre" % (args.output_folder, args.output_tree_filename, n+1))
@@ -117,12 +130,19 @@ def generate_trees(args):
         if args.compute_ed:
             tree_metrics.add_ed_scores(whole_tre, ed_scores)
 
+        if args.pd_clades:
+            tree_metrics.compute_pd(whole_tre)
+            tree_metrics.save_pd_for_clades(whole_tre, pd_clades, pd_dict, dates_dict, spp_dict)
+
         del whole_tre
         gc.collect()
 
 
     if args.compute_ed:
-        tree_metrics.write_ed_scores(ed_scores, filename="%s/ed_scores.csv" % (args.output_folder))
+        tree_metrics.write_ed_scores("%s/%s_ed_scores.txt" % (args.output_folder, args.output_tree_filename), ed_scores)
+
+    if args.pd_clades:
+        tree_metrics.write_pd_dists("%s/%s" % (args.output_folder, args.output_tree_filename), pd_dict, dates_dict, spp_dict)
 
     if args.compute_rf:
         tree_metrics.compute_rf_distances(args.output_folder, args.output_tree_filename, args.num_trees)
@@ -168,6 +188,14 @@ def main():
     parser.add_argument("--descr_dates",
                         help="Path of a csv file containing description dates for species",
                         default="oz_data/descr_dates.csv")
+
+    parser.add_argument("--pd_clades",
+                        help="Path of a text file containing a list of node names (one on each line) for which to output PD estimates.",
+                        default=None)
+
+    parser.add_argument("--use_lnN_interpolation",
+                        help="Flag: whether to use ln(N) interpolation, rather than BLADJ. Default: False.",
+                        action="store_true")
 
     parser.add_argument("--maintain_species_set",
                         help="Flag: whether to keep the set of species the same across all trees, enabling computation of distance metrics between trees. Default: False.",

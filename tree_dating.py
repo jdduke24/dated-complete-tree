@@ -48,44 +48,6 @@ def strip_undated_nodes(tre):
     return stripped_tre
 
 
-def use_shortest_path(x):
-    """Key function for use in max function in date_labelling, so that max uses the shortest path as a tiebreaker."""
-    return [x[0], -x[1]]
-
-
-def date_labelling(parent):
-    """Recurse in postorder through the tree, labelling each node with the oldest date below it
-    and the path length (number of nodes) to that date. If the oldest date is a tie (usually 0),
-    we could choose the longest path or the shortest path to it. This labels nodes with both.
-
-    Return value is: [oldest date found so far below this node, longest path length to it],
-                     [oldest date found so far below this node, shortest path length to it]
-    """
-    if parent.is_leaf():
-        if parent.date != 0:
-            logger.warning("Leaf node %s has non-zero date." % parent.name)
-    else:
-        oldest_path_long = [0, -1e8]
-        oldest_path_short = [0, 1e8]
-        for child in parent.children:
-            new_path_long, new_path_short = date_labelling(child)
-            oldest_path_long = max(oldest_path_long, new_path_long)
-            oldest_path_short = max(oldest_path_short, new_path_short, key=use_shortest_path)
-
-    if parent.date is None:
-        # only bother with label if there is no date here
-        parent.oldest_path_long = copy.copy(oldest_path_long)
-        parent.oldest_path_short = copy.copy(oldest_path_short)
-        oldest_path_long[1] += 1
-        oldest_path_short[1] += 1
-    else:
-        # if there is a date, doesn't matter what was received; just return this date
-        oldest_path_long = [parent.date, 1]
-        oldest_path_short = [parent.date, 1]
-
-    return oldest_path_long, oldest_path_short
-
-
 def label_older_descendants(parent):
     """Labels each node with a list of descendant nodes that have dates older than its own."""
 
@@ -189,7 +151,49 @@ def dq_date_removal(tre):
         max_count = max(dq_counts_info, key=tuple_value)
 
 
-def impute_missing_dates(tre, l=1, m=0):
+def use_shortest_path(x):
+    """Key function for use in max function in date_labelling, so that max uses the shortest path as a tiebreaker."""
+    return [x[0], -x[1]]
+
+
+def date_labelling(parent):
+    """Recurse in postorder through the tree, labelling each node with the oldest date below it
+    and the path length (number of nodes) to that date. If the oldest date is a tie (usually 0),
+    we could choose the longest path or the shortest path to it. This labels nodes with both.
+
+    Return value is: [oldest date found so far below this node, longest path length to it],
+                     [oldest date found so far below this node, shortest path length to it]
+    """
+    if parent.is_leaf():
+        if parent.date != 0:
+            logger.warning("Leaf node %s has non-zero date." % parent.name)
+    else:
+        oldest_path_long = [0, -1e8]
+        oldest_path_short = [0, 1e8]
+        for child in parent.children:
+            new_path_long, new_path_short = date_labelling(child)
+            oldest_path_long = max(oldest_path_long, new_path_long)
+            oldest_path_short = max(oldest_path_short, new_path_short, key=use_shortest_path)
+
+    if parent.date is None:
+        # only bother with label if there is no date here
+        parent.oldest_path_long = copy.copy(oldest_path_long)
+        parent.oldest_path_short = copy.copy(oldest_path_short)
+        oldest_path_long[1] += 1
+        oldest_path_short[1] += 1
+    else:
+        # if there is a date, doesn't matter what was received; just return this date
+        oldest_path_long = [parent.date, 0]
+        oldest_path_short = [parent.date, 0]
+        parent.oldest_path_long = copy.copy(oldest_path_long)
+        parent.oldest_path_short = copy.copy(oldest_path_short)
+        oldest_path_long[1] += 1
+        oldest_path_short[1] += 1
+
+    return oldest_path_long, oldest_path_short
+
+
+def impute_missing_dates(tre, l=1, m=0, useLnN=False):
     """Traverse the tree in preorder, giving each undated node a date spaced along the path between between
     its parent (which always has a date, since this is preorder traversal) and the oldest date found below
     it (as labelled by the date_labelling function). Assumes root node is dated.
@@ -203,43 +207,74 @@ def impute_missing_dates(tre, l=1, m=0):
     (m > 0) or younger (m < 0). Uses spacing along an exponential function, i.e. y = exp(m*x).
     Values of m between -2 and 2 are pretty sensible.
     """
+    if useLnN:
+        def label_pct_dates(parent):
+            if parent.is_leaf():
+                results = [0,0,1]
+            elif not parent.date:
+                results = [1,0,0]
+            else:
+                results = [1,1,0]
+
+            for child in parent.children:
+                new_results = label_pct_dates(child)
+                results[0] += new_results[0]
+                results[1] += new_results[1]
+                results[2] += new_results[2]
+
+            parent.add_feature("child_tree_size", results[0])
+            parent.add_feature("num_dates", results[1])
+            parent.add_feature("num_leaves", results[2])
+
+            return results
+
+        label_pct_dates(tre)
+
     for node in tre.traverse(strategy="preorder"):
         if node is tre:
             node.imputed_date = False
             continue
 
         if node.date is None:
-            if node.up.imputed_date:
-                if node.up.oldest_path_long[0] == node.oldest_path_long[0] and node.up.oldest_path_long[1] == node.oldest_path_long[1]+1:
-                    node.date_above_long = node.up.date_above_long
-                    node.mu_spacing_long = node.up.mu_spacing_long
+            if useLnN and node.oldest_path_long[0] == 0:
+                if node.num_leaves > 1 and node.up.num_leaves > 1 and node.up.num_leaves > node.num_leaves:
+                    node.date = node.up.date * np.log(node.num_leaves)/np.log(node.up.num_leaves)
                 else:
-                    node.date_above_long = node.up.date_long
-                    mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
-                    node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
+                    # need backup option of standard BLADJ in case of o---o---o situation or where num_leaves is the same for
+                    # both parent and child
+                    node.date = node.up.date - (node.up.date - node.oldest_path_long[0]) / (node.oldest_path_long[1]+1)
+            else:
+                if node.up.imputed_date:
+                    if node.up.oldest_path_long[0] == node.oldest_path_long[0] and node.up.oldest_path_long[1] == node.oldest_path_long[1]+1:
+                        node.date_above_long = node.up.date_above_long
+                        node.mu_spacing_long = node.up.mu_spacing_long
+                    else:
+                        node.date_above_long = node.up.date_long
+                        mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
+                        node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
 
-                if node.up.oldest_path_short[0] == node.oldest_path_short[0] and node.up.oldest_path_short[1] == node.oldest_path_short[1]+1:
-                    node.date_above_short = node.up.date_above_short
-                    node.mu_spacing_short = node.up.mu_spacing_short
+                    if node.up.oldest_path_short[0] == node.oldest_path_short[0] and node.up.oldest_path_short[1] == node.oldest_path_short[1]+1:
+                        node.date_above_short = node.up.date_above_short
+                        node.mu_spacing_short = node.up.mu_spacing_short
+                    else:
+                        node.date_above_short = node.up.date_short
+                        mu_spacing_short = np.exp(m * np.linspace(0, 1, node.oldest_path_short[1]+1))
+                        node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
+
                 else:
-                    node.date_above_short = node.up.date_short
+                    node.date_above_long = node.up.date
+                    node.date_above_short = node.up.date
+
+                    mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
                     mu_spacing_short = np.exp(m * np.linspace(0, 1, node.oldest_path_short[1]+1))
+
+                    node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
                     node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
 
-            else:
-                node.date_above_long = node.up.date
-                node.date_above_short = node.up.date
+                node.date_long  = node.date_above_long - (node.date_above_long - node.oldest_path_long[0])  * node.mu_spacing_long[-(node.oldest_path_long[1]+1)]
+                node.date_short = node.date_above_short - (node.date_above_short - node.oldest_path_short[0]) * node.mu_spacing_short[-(node.oldest_path_short[1]+1)]
 
-                mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
-                mu_spacing_short = np.exp(m * np.linspace(0, 1, node.oldest_path_short[1]+1))
-
-                node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
-                node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
-
-            node.date_long  = node.date_above_long - (node.date_above_long - node.oldest_path_long[0])  * node.mu_spacing_long[-(node.oldest_path_long[1]+1)]
-            node.date_short = node.date_above_short - (node.date_above_short - node.oldest_path_short[0]) * node.mu_spacing_short[-(node.oldest_path_short[1]+1)]
-
-            node.date = l*node.date_long + (1-l)*node.date_short
+                node.date = l*node.date_long + (1-l)*node.date_short
 
             node.imputed_date = True
 
@@ -267,6 +302,10 @@ def compute_branch_lengths(tre, round_numbers=False):
             dist = node.up.date - node.date
             if dist < 0:
                 logger.warning("Warning: Negative branch length above %s" % node.name)
+                print(node.up.date)
+                print(node.date)
+                print(len(node.up.children), len(node.children))
+
             if round_numbers:
                 node.dist = round_to_4sf(node.up.date - node.date)
             else:

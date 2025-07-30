@@ -3,6 +3,119 @@ from taxonomy_utils import tx_levels
 import logging
 logger = logging.getLogger(__name__)
 
+
+def add_anc_ranks(parent, current_rank=None, plants=False, animals=False, domain=None, kingdom=None, phylum=None, clas=None, order=None, family=None):
+    """Add ancestral ranks. If this node has no rank, this is the rank of the first node above it which
+    does have a rank. If this node has a rank, that rank is both its ancestral and descendant rank.
+    Also annotate every node with the domain, kingdom, phylum, class, order and family it is under (if any).
+    """
+    if current_rank is None:
+        # only occurs at root (first call of function)
+        current_rank = parent.tx_level
+        parent.add_feature("ancestral_rank", parent.tx_level)
+
+    if tx_levels[parent.tx_level] > 0 or tx_levels[current_rank] < 0:
+        current_rank = parent.tx_level
+
+    if parent.tx_level == "domain":
+        domain = parent.name
+    elif parent.tx_level == "kingdom":
+        kingdom = parent.name
+    elif parent.tx_level == "phylum":
+        phylum = parent.name
+    elif parent.tx_level == "class":
+        clas = parent.name
+    elif parent.tx_level == "order":
+        order = parent.name
+    elif parent.tx_level == "family":
+        family = parent.name
+
+    parent.add_feature("domain", domain)
+    parent.add_feature("kingdom", kingdom)
+    parent.add_feature("phylum", phylum)
+    parent.add_feature("clas", clas)
+    parent.add_feature("order", order)
+    parent.add_feature("family", family)
+
+    for child in parent.children:
+        if tx_levels[child.tx_level] < 0:
+            if plants and current_rank == "section":
+                child.add_feature("ancestral_rank", "plantsection")
+            elif plants and current_rank == "subsection":
+                child.add_feature("ancestral_rank", "plantsubsection")
+            elif animals and current_rank == "section":
+                child.add_feature("ancestral_rank", "animalsection")
+            elif animals and current_rank == "subsection":
+                child.add_feature("ancestral_rank", "animalsubsection")
+            else:
+                child.add_feature("ancestral_rank", current_rank)
+        else:
+            if plants:
+                if child.tx_level == "section":
+                    child.tx_level = "plantsection"
+                elif child.tx_level == "subsection":
+                    child.tx_level = "plantsubsection"
+            elif animals:
+                if child.tx_level == "section":
+                    child.tx_level = "animalsection"
+                elif child.tx_level == "subsection":
+                    child.tx_level = "animalsubsection"
+
+            child.add_feature("ancestral_rank", child.tx_level)
+
+        if child.name == "Metazoa_ott691846":
+            # animals
+            add_anc_ranks(child, current_rank, False, True, domain, kingdom, phylum, clas, order, family)
+        elif child.name == "mrcaott2ott148" or parent.name == "Fungi_ott352914":
+            # plants and fungi
+            add_anc_ranks(child, current_rank, True, False, domain, kingdom, phylum, clas, order, family)
+        else:
+            add_anc_ranks(child, current_rank, plants, animals, domain, kingdom, phylum, clas, order, family)
+
+
+def add_desc_ranks(parent, plants=False, animals=False):
+    """Add descendant ranks. If this node has no rank, this is the rank of the first node below it which
+    does have a rank. If this node has a rank, that rank is both its ancestral and descendant rank.
+    """
+    if parent.is_leaf():
+        parent.add_feature("desc_rank",parent.tx_level)
+        return parent.tx_level
+    else:
+        if parent.name == "Metazoa_ott691846":
+            # animals
+            animals = True
+            plants = False
+        elif parent.name == "mrcaott2ott148" or parent.name == "Fungi_ott352914":
+            # plants and fungi
+            animals = False
+            plants = True
+
+        max_desc_rank = "subspecies"
+        for child in parent.children:
+            child_rank = add_desc_ranks(child, plants, animals)
+
+            if plants:
+                if child_rank == "section":
+                    child_rank = "plantsection"
+                elif child_rank == "subsection":
+                    child_rank = "plantsubsection"
+            elif animals:
+                if child_rank == "section":
+                    child_rank = "animalsection"
+                elif child_rank == "subsection":
+                    child_rank = "animalsubsection"
+
+            if tx_levels[child_rank] > tx_levels[max_desc_rank]:
+                max_desc_rank = child_rank
+
+        if tx_levels[parent.tx_level] > 0:
+            parent.add_feature("desc_rank",parent.tx_level)
+            return parent.tx_level
+
+        parent.add_feature("desc_rank",max_desc_rank)
+        return max_desc_rank
+
+
 def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root, kingdom="Other", root=True):
     """Recurse through the tree, populating:
     genus_dict: step 1, identify taxonomic species placed directly under phylogenetic genus nodes, along with their associated backbone.
