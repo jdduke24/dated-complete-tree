@@ -131,7 +131,10 @@ def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root, kingdom=
     if root and parent.ph_tx == "PH" and tx_levels[parent.tx_level] == tx_levels["genus"]:
         # if the root node of the whole tree is itself a genus, set this as the current genus root
         genus_root = parent
-        genus_dict[genus_root] = [[],[]]
+        if genus_root.date is None:
+            genus_dict[genus_root] = [[],[genus_root]]
+        else:
+            genus_dict[genus_root] = [[],[]]
 
     species_found = set()
     genera_found = set()
@@ -150,7 +153,13 @@ def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root, kingdom=
         # set up lists for collecting info about this genus/species
         if tx_levels[child.tx_level] == tx_levels["genus"] and child.ph_tx == "PH":
             # dict for step 1
-            genus_dict[child] = [[],[]]
+            if child.date is None:
+                # only include the root in the backbone if the root is not dated
+                genus_dict[child] = [[],[child]]
+            else:
+                # if the root is dated, don't include the root. Moving a dated common ancestor would result in the date no longer
+                # referring to the common ancestor of the intended species.
+                genus_dict[child] = [[],[]]
         elif tx_levels[child.tx_level] == tx_levels["species"] and "%s/%s" % (kingdom, child.genus_name) not in nmp_genus_dict:
             # dict for step 2
             nmp_genus_dict["%s/%s" % (kingdom, child.genus_name)] = [[],[]]
@@ -266,7 +275,13 @@ def populate_tofix_dict(parent, tofix_dict, nmp_genus_dict, kingdom="Other"):
                 used_rank = child.tx_level
 
             if used_rank not in tofix_dict[parent]:
-                tofix_dict[parent][used_rank] = [[], [], None]
+                if parent.date is None:
+                    # only include the root in the backbone if the root is not dated
+                    tofix_dict[parent][used_rank] = [[], [parent], None]
+                else:
+                    # if the root is dated, don't include the root. Moving a dated common ancestor would result in the date no longer
+                    # referring to the common ancestor of the intended species.
+                    tofix_dict[parent][used_rank] = [[], [], None]
 
             tofix_dict[parent][used_rank][0].append(child)
             child.info = "OTH FIX"
@@ -322,7 +337,7 @@ def populate_tofix_bkb(parent, tofix_dict, current_roots, root_call=True):
 
 
     for child in parent.children:
-        if ((child.info is None or child.info == "OTH PARENT") and (child.ph_tx == "PH" or child.ph_tx == "IN")):
+        if ((child.info is None or child.info == "OTH PARENT") and (child.ph_tx == "PH" or child.ph_tx == "IN" or child.ph_tx == "FI")):
             for root in current_roots:
                 for rank in tofix_dict[root]:
                     bkb_type = oth_backbone_type(child, parent, rank)
@@ -335,13 +350,14 @@ def populate_tofix_bkb(parent, tofix_dict, current_roots, root_call=True):
 
             if tx_levels[child.tx_level] < 0  or tx_levels[child.tx_level] > tx_levels["genus"]:
                 # never recurse through a genus or below, or through an inserted node (which at this stage must
-                # have come from NMP fixing, so going any further would be interrupting a monophyletic group).
+                # have come from NMP fixing, so going any further would be interrupting a monophyletic group - unless
+                # it was added by a forced taxa move ie ph_tx == "FI").
                 if child.info and child.info[:10] == "OTH PARENT":
                     current_roots.append(child)
                     for rank in tofix_dict[child]:
                         tofix_dict[child][rank][2] = list(current_roots)
 
-                if child.ph_tx == "PH":
+                if child.ph_tx == "PH" or child.ph_tx == "FI":
                     populate_tofix_bkb(child, tofix_dict, current_roots, False)
 
                 if child.info and child.info[:10] == "OTH PARENT":

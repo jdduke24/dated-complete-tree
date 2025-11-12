@@ -121,7 +121,8 @@ def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
     fout = open("%s_phyla.txt" % filename, "w")
     fout.write("Clade\tspp.\tMean\tMin\t2.5pct\t16pct\t25pct\t50pct\t75pct\t84pct\t97.5pct\tMax\n")
     for clade in pd_dict:
-        fout.write("%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n" % (clade,
+        if len(spp_dict[clade]) > 0:
+            fout.write("%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n" % (clade,
                                                                              spp_dict[clade][0],
                                                                              np.mean(pd_dict[clade]),
                                                                              np.percentile(pd_dict[clade], 0),
@@ -140,7 +141,8 @@ def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
     fout = open("%s_dates.txt" % filename, "w")
     fout.write("Clade\tMean\tMin\t2.5pct\t16pct\t25pct\t50pct\t75pct\t84pct\t97.5pct\tMax\n")
     for clade in dates_dict:
-        fout.write("%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n" % (clade,
+        if len(spp_dict[clade]) > 0:
+            fout.write("%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n" % (clade,
                                                                              spp_dict[clade][0],
                                                                              np.mean(dates_dict[clade]),
                                                                              np.percentile(dates_dict[clade], 0),
@@ -155,6 +157,44 @@ def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
                                                                              list_to_tab_str(dates_dict[clade])))
 
     fout.close()
+
+
+def compute_gamma(tre):
+    """Gamma statistic from Pybus & Harvey (2000). Will be normally distributed with mean 0 for
+    a tree with branch lengths that fit a constant-rate pure birth model.
+    Here, assume a bifurcating tree with all nodes are dated, and dated consistently,
+    with leaf nodes that have date 0. Variable names and subscripts are taken from the Pybus paper.
+    """
+
+    dates_list = []
+    for node in tre.traverse():
+        if node.date > 0:
+            dates_list.append(node.date)
+
+    dates_list.sort(reverse=True)
+
+    g = []
+    for i in range(1, len(dates_list)):
+        g.append(dates_list[i-1] - dates_list[i])
+    g.append(dates_list[-1])
+
+    n = len(tre.get_leaves())
+
+    T = 0
+    for j in range(2, n+1):
+        # j = 2, ..., n
+        T += j * g[j-2]
+
+    tmpsum = 0
+    for i in range(2, n):
+        # i = 2, ..., n-1
+        for k in range(2, i+1):
+            # k = 2, ..., i
+            tmpsum += k * g[k-2]
+
+    gamma = ( (1/(n-2) * tmpsum) - T/2 ) / ( T * np.sqrt(1 / (12*(n-2))) )
+
+    return gamma
 
 
 def compute_rf_distances(output_folder, output_tree_filename, n):

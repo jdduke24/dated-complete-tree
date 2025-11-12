@@ -7,37 +7,54 @@ logger = logging.getLogger(__name__)
 
 # Helper functions:
 
-# create a new node
-def create_node(name):
+def create_node(name, forced_insert=False):
+    """Create a new node with metadata."""
     new_node = ete3.TreeNode(name=name)
-    # new_node.add_feature("tx_level", "mrca")
-    # new_node.add_feature("desc_year", None)
-    # new_node.add_feature("ancestral_rank", None)
-    # new_node.add_feature("desc_rank", None)
-    # new_node.add_feature("ph_tx", "IN")
-    # new_node.add_feature("date", None)
-    # new_node.add_feature("imputed_date", False)
-    # new_node.add_feature("info", None)
 
     new_node.tx_level = "mrca"
     new_node.desc_year = None
     new_node.ancestral_rank = None
     new_node.desc_rank = None
-    new_node.ph_tx = "IN"
+    if forced_insert:
+        new_node.ph_tx = "FI"
+    else:
+        new_node.ph_tx = "IN"
     new_node.date = None
     new_node.imputed_date = False
+    new_node.imputation_type = 0
     new_node.info = None
 
     return new_node
 
 
-# insert a new node between the parent and the child
-def insert_node(parent, child, name):
-    new_node = create_node(name)
+def insert_node(parent, child, name, forced_insert=False):
+    """Insert a new node, with metadata, between the parent and the child."""
+    new_node = create_node(name, forced_insert)
     new_node.ancestral_rank = parent.ancestral_rank
     new_node.desc_rank = child.desc_rank
 
     new_node.add_child(child.detach())
+    parent.add_child(new_node)
+
+    return new_node
+
+
+def insert_node_below(parent, name):
+    """Insert a new node below the parent, and move the current children of the parent to the newly-inserted node"""
+    new_node = create_node(name)
+
+    new_node.ancestral_rank = parent.ancestral_rank
+
+    highest_desc_rank = "species"
+    for child in parent.children:
+        if tx_levels[child.tx_level] > tx_levels[highest_desc_rank]:
+            highest_desc_rank = child.tx_level
+    new_node.desc_rank = highest_desc_rank
+
+    orig_children = parent.children.copy()
+    for child in orig_children:
+        new_node.add_child(child.detach())
+
     parent.add_child(new_node)
 
     return new_node
@@ -228,14 +245,23 @@ def remove_nonspecies_leaves(tre):
         remove_node_and_parents(node, subspecies_only=False)
 
 
+def key_to_node(key):
+    if type(key) is tuple:
+        return key[0]
+    elif type(key) is ete3.coretype.tree.TreeNode:
+        return key
+    else:
+        return None
+
+
 def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
     """Go through dictionary of nodes to be "fixed" and move each into the backbone associated with it."""
 
     keys_to_remove = []
     for key in tofix_dict:
-        # if there is no backbone, we don't need to (can't) fix this
+        # if there is no backbone, or only the root of the clade is in the backbone, we don't need to fix this
         backbone_size = len(tofix_dict[key][1])
-        if backbone_size == 0:
+        if backbone_size == 0 or (backbone_size == 1 and tofix_dict[key][1][0] is key_to_node(key)):
             keys_to_remove.append(key)
             continue
 
@@ -272,15 +298,34 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
                 if tx_levels[node_to_move.tx_level] == tx_levels["species"]:
                     genera_found[node_to_move.genus_name] = node_to_move
             else:
-                # we have seen this genus before - so put this node with the others of the same genus to ensure monophyly
+                # this is a species and we have seen its genus before - therefore this is a species in a non-monophyletic genus,
+                # so put this node with the others of the same genus to ensure monophyly
                 child = genera_found[node_to_move.genus_name]
 
-            parent = child.up
+            if type(key_to_node(key)) == ete3.coretype.tree.TreeNode and child is key_to_node(key):
+                # the "child" chosen is the root node of the group - we want to insert a new node *below* this
+                if len(child.children) < 2:
+                    child.add_child(node_to_move)
+                    new_internal_node = None
+                else:
+                    new_internal_node = insert_node_below(child, "mrcaimp")
+                    child.add_child(node_to_move)
+            else:
+                # not the root node; insert above, unless the parent has only 1 child in which case just attach directly
+                parent = child.up
+                if len(parent.children) < 2:
+                    parent.add_child(node_to_move)
+                    new_internal_node = None
+                else:
+                    new_internal_node = insert_node(parent, child, "mrcaimp")
+                    new_internal_node.add_child(node_to_move)
 
-            if len(parent.children) >= 2:
-                new_internal_node = insert_node(parent, child, "mrcat")
-                new_internal_node.add_child(node_to_move)
+            # if we created a new node, add it to the backbone
+            if new_internal_node:
                 if expand_parent_backbones:
+                    if tofix_dict[key][2] is None:
+                        print("key", key)
+                        print(tofix_dict[key])
                     for root in tofix_dict[key][2]:
                         for level in tx_levels:
                             if tx_levels[level] < tx_levels[child.ancestral_rank]:
@@ -292,10 +337,12 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
                                     tofix_dict[(root,level)][1].append(new_internal_node)
                 else:
                     tofix_dict[key][1].append(new_internal_node)
-            else:
-                parent.add_child(node_to_move)
 
+            # add the node we moved to the backbone
             if expand_parent_backbones:
+                if tofix_dict[key][2] is None:
+                    print("key", key)
+                    print(tofix_dict[key])
                 for root in tofix_dict[key][2]:
                     for level in tx_levels:
                         if tx_levels[level] < tx_levels[child.ancestral_rank]:
@@ -309,8 +356,8 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
 
 
 
-# fix polytomy directly beneath given parent
 def fix_polytomy(parent, rng):
+    """Fix polytomy directly beneath given parent: choose uniformly at random from possible topologies."""
     if len(parent.children) <= 2:
         raise("Error: Trying to fix a non-polytomy")
 
@@ -333,7 +380,7 @@ def fix_polytomy(parent, rng):
         new_sibling = possible_siblings[rng.integers(len(possible_siblings))]
 
         if new_sibling is parent:
-            new_node = create_node("mrcapp")
+            new_node = create_node("mrcapoly")
             new_node.ancestral_rank = parent.ancestral_rank
             new_node.desc_rank = parent.desc_rank
             current_children = list(parent.children)
@@ -345,7 +392,7 @@ def fix_polytomy(parent, rng):
 
         else:
 
-            new_node = insert_node(new_sibling.up, new_sibling, "mrcaps")
+            new_node = insert_node(new_sibling.up, new_sibling, "mrcapoly")
             new_node.add_child(node_to_move)
 
             if tx_levels[node_to_move.desc_rank] > tx_levels[new_node.desc_rank]:
@@ -358,6 +405,7 @@ def fix_polytomy(parent, rng):
 
 
 def fix_all_polytomies(tre, rng):
+    """Fix at random all polytomies in the tree."""
     polytomies = []
     for node in tre.traverse(strategy='preorder'):
         if len(node.children) > 2:
@@ -368,14 +416,190 @@ def fix_all_polytomies(tre, rng):
 
 
 def delete_one_child_nodes(tre, maintain_branch_lengths=False):
+    """Strip out nodes with only one child. If maintain_branch_lengths=True, add the branch length above
+    the deleted node to the branch below it.
+    """
     one_child_nodes = []
     for node in tre.traverse(strategy="preorder"):
         if len(node.children) == 1:
             one_child_nodes.append(node)
 
     for node in one_child_nodes:
-        if maintain_branch_lengths:
-            node.children[0].dist += node.dist
-        node.up.add_child(node.children[0].detach())
-        node.detach()
+        if not node.up:
+            # if root no has one one child, delete it and move the root to the original root's child
+            tre = tre.children[0]
+            tre.detach()
+        else:
+            if maintain_branch_lengths:
+                node.children[0].dist += node.dist
+            node.up.add_child(node.children[0].detach())
+            node.detach()
         del node
+
+    return tre
+
+
+def strip_birds(tre, ejm_birds_filename="config/OTT_crosswalk_2024.csv"):
+    import csv
+
+    desired_ottids = set()
+
+    with open(ejm_birds_filename, newline='') as csvfile:
+        rdr = csv.reader(csvfile)
+        for idx, line in enumerate(rdr):
+            if idx == 0:
+                # first line has column headings
+                continue
+            desired_ottids.add(int(line[8]))
+
+    aves_root = None
+    for node in tre.iter_search_nodes(name="Aves_ott81461"):
+        aves_root = node
+        break
+
+    to_remove = []
+    if aves_root is not None:
+        for node in aves_root.traverse():
+            if tx_levels[node.tx_level] == tx_levels["species"] or tx_levels[node.tx_level] == tx_levels["subspecies"]:
+                nm_parts = node.name.split('_')
+                ottid = int(nm_parts[-1][3:])
+                if ottid not in desired_ottids:
+                    to_remove.append(node)
+                else:
+                    desired_ottids.remove(ottid)
+
+    for node in to_remove:
+        if tx_levels[node.tx_level] == tx_levels["subspecies"]:
+            remove_node_and_parents(node, subspecies_only=True)
+
+    for node in to_remove:
+        if tx_levels[node.tx_level] == tx_levels["species"] and len(node.children) == 0:
+            remove_node_and_parents(node, subspecies_only=False)
+
+    for leaf in aves_root.get_leaves():
+        leaf.date = 0
+
+
+def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
+    import csv
+
+    desired_ottids = set()
+
+    with open(turtles_filename, newline='') as csvfile:
+        rdr = csv.reader(csvfile)
+        for idx, line in enumerate(rdr):
+            if idx == 0:
+                # first line has column headings
+                continue
+            desired_ottids.add(int(line[1]))
+
+    turtles_root = None
+    for node in tre.iter_search_nodes(name="Testudines_ott639666"):
+        turtles_root = node
+        break
+
+    to_remove = []
+    if turtles_root is not None:
+        for node in turtles_root.traverse():
+            if tx_levels[node.tx_level] == tx_levels["species"] or tx_levels[node.tx_level] == tx_levels["subspecies"]:
+                nm_parts = node.name.split('_')
+                ottid = int(nm_parts[-1][3:])
+                if ottid not in desired_ottids:
+                    to_remove.append(node)
+                else:
+                    desired_ottids.remove(ottid)
+
+    for node in to_remove:
+        if tx_levels[node.tx_level] == tx_levels["subspecies"]:
+            remove_node_and_parents(node, subspecies_only=True)
+
+    for node in to_remove:
+        if tx_levels[node.tx_level] == tx_levels["species"] and len(node.children) == 0:
+            remove_node_and_parents(node, subspecies_only=False)
+
+    for leaf in turtles_root.get_leaves():
+        leaf.date = 0
+
+
+def fix_taxonomy_ordering(tre, filename="config/taxonomy_fixes.csv"):
+    """Adjust the tree to ensure correct taxonomic ordering, using hand-curated config file.
+    Type 0: remove the rank from the ancestor node.
+    Type 1: remove the rank from the descendant node.
+    Type 2: the inconsistent descendant node has only one child, so just delete the node. Assume no branch lengths are set yet.
+    """
+
+    import csv
+
+    with open(filename, newline='') as csvfile:
+        rdr = csv.reader(csvfile)
+        for idx, line in enumerate(rdr):
+            if idx == 0:
+                # first line has column headings
+                continue
+            if line[2] == "0":
+                node_to_find = None
+                for node in tre.iter_search_nodes(name=line[0]):
+                    node_to_find = node
+                    break
+                if node_to_find is None:
+                    raise Exception("Node in taxonomy ordering config is not in tree.")
+
+                node.tx_level = "no rank"
+
+            elif line[2] == "1":
+                node_to_find = None
+                for node in tre.iter_search_nodes(name=line[1]):
+                    node_to_find = node
+                    break
+                if node_to_find is None:
+                    raise Exception("Node in taxonomy ordering config is not in tree.")
+
+                node.tx_level = "no rank"
+
+            if line[2] == "2":
+                node_to_find = None
+                for node in tre.iter_search_nodes(name=line[1]):
+                    node_to_find = node
+                    break
+                if node_to_find is None:
+                    raise Exception("Node in taxonomy ordering config is not in tree.")
+
+                # assume this isn't the root node
+                node_to_find.up.add_child(node.children[0].detach())
+                node_to_find.detach()
+                del node_to_find
+
+
+def forced_taxa_moves(tre, filename="config/forced_taxa_moves.csv"):
+    """Force some taxa to be sisters of other taxa.
+    Initially created to force Eukaryota to be a sister of Archaea.
+    """
+
+    import csv
+
+    with open(filename, newline='') as csvfile:
+        rdr = csv.reader(csvfile)
+        for idx, line in enumerate(rdr):
+            if idx == 0:
+                # first line has column headings
+                continue
+
+            node_to_move = None
+            for node in tre.iter_search_nodes(name=line[0]):
+                node_to_move = node
+                break
+            if node_to_move is None:
+                raise Exception("Node in forced taxa moves config is not in tree.")
+
+            sister_node = None
+            for node in tre.iter_search_nodes(name=line[1]):
+                sister_node = node
+                break
+            if sister_node is None:
+                raise Exception("Node in forced taxa moves config is not in tree.")
+
+            new_internal_node = insert_node(sister_node.up, sister_node, "mrcaimp", forced_insert=True)
+            new_internal_node.add_child(node_to_move.detach())
+
+            # pretend this was phylogeny so it doesn't get moved again
+            node_to_move.ph_tx = "PH"

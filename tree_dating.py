@@ -6,19 +6,26 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def remove_inconsistent_dates(parent, mrad):
+def remove_inconsistent_dates(parent, mrad=None):
     """Recurse in preorder through the tree, removing the date info from any nodes that have dates older
     than a date found on an ancestor. (mrad = most recent ancestor date)
     """
-    next_mrad = mrad
-    # if we have a date, check it against the most recent ancestor
-    if parent.date:
-        if parent.date > mrad:
-            # if it is older than an ancestor, throw away the date information at this node
-            parent.date = None
-            logger.info("Removing inconsistent date at node %s." % parent.name)
-        else:
-            next_mrad = parent.date
+
+    if mrad is None:
+        # must be root node
+        if not parent.date:
+            raise Exception("Require root date.")
+        next_mrad = parent.date
+    else:
+        next_mrad = mrad
+        # if we have a date, check it against the most recent ancestor
+        if parent.date:
+            if round(parent.date,6) >= round(mrad,6):
+                # if it is older than an ancestor, throw away the date information at this node
+                parent.date = None
+                logger.info("Removing inconsistent date at node %s." % parent.name)
+            else:
+                next_mrad = parent.date
 
     for child in parent.children:
         remove_inconsistent_dates(child, next_mrad)
@@ -63,7 +70,7 @@ def label_older_descendants(parent):
     # store list of descendant nodes with an older date than this node
     if parent.date:
         parent.older_descendants = [
-            child for child in descendants if child.date > parent.date
+            child for child in descendants if round(child.date,6) >= round(parent.date,6)
         ]
 
     return descendants
@@ -125,7 +132,11 @@ def dq_date_removal(tre):
         else:
             mrca = 0
 
-        return (x[0], mrca, -x[1].date)
+        return (x[0], mrca, -round(x[1].date,6))
+
+    if len(dq_counts_info) == 0:
+        print("No inconsistent dates to remove.")
+        return
 
     max_count = max(dq_counts_info, key=tuple_value)
 
@@ -159,7 +170,7 @@ def use_shortest_path(x):
 def date_labelling(parent):
     """Recurse in postorder through the tree, labelling each node with the oldest date below it
     and the path length (number of nodes) to that date. If the oldest date is a tie (usually 0),
-    we could choose the longest path or the shortest path to it. This labels nodes with both.
+    we must choose a path to it. This computes both the longest path (most nodes) and the shortest.
 
     Return value is: [oldest date found so far below this node, longest path length to it],
                      [oldest date found so far below this node, shortest path length to it]
@@ -176,7 +187,6 @@ def date_labelling(parent):
             oldest_path_short = max(oldest_path_short, new_path_short, key=use_shortest_path)
 
     if parent.date is None:
-        # only bother with label if there is no date here
         parent.oldest_path_long = copy.copy(oldest_path_long)
         parent.oldest_path_short = copy.copy(oldest_path_short)
         oldest_path_long[1] += 1
@@ -193,7 +203,30 @@ def date_labelling(parent):
     return oldest_path_long, oldest_path_short
 
 
-def impute_missing_dates(tre, l=1, m=0, useLnN=False):
+def impute_clade_birth_model(choices, dates, rng):
+    # assumes a bifurcating tree
+    i = 1
+    while len(choices) > 0:
+        probs = np.array([c.num_leaves-1 for c in choices])
+        probs = probs / np.sum(probs)
+
+        next_node = rng.choice(choices, p=probs)
+
+        next_node.date = dates[i]
+        next_node.imputation_type = 4
+        next_node.imputed_date = True
+
+        choices.remove(next_node)
+
+        if not next_node.children[0].is_leaf():
+            choices.append(next_node.children[0])
+        if not next_node.children[1].is_leaf():
+            choices.append(next_node.children[1])
+
+        i += 1
+
+
+def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, counts=[0,0]):
     """Traverse the tree in preorder, giving each undated node a date spaced along the path between between
     its parent (which always has a date, since this is preorder traversal) and the oldest date found below
     it (as labelled by the date_labelling function). Assumes root node is dated.
@@ -207,7 +240,7 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False):
     (m > 0) or younger (m < 0). Uses spacing along an exponential function, i.e. y = exp(m*x).
     Values of m between -2 and 2 are pretty sensible.
     """
-    if useLnN:
+    if useLnN or useBirth:
         def label_pct_dates(parent):
             if parent.is_leaf():
                 results = [0,0,1]
@@ -237,12 +270,34 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False):
 
         if node.date is None:
             if useLnN and node.oldest_path_long[0] == 0:
+                counts[0] += 1
                 if node.num_leaves > 1 and node.up.num_leaves > 1 and node.up.num_leaves > node.num_leaves:
                     node.date = node.up.date * np.log(node.num_leaves)/np.log(node.up.num_leaves)
                 else:
                     # need backup option of standard BLADJ in case of o---o---o situation or where num_leaves is the same for
                     # both parent and child
                     node.date = node.up.date - (node.up.date - node.oldest_path_long[0]) / (node.oldest_path_long[1]+1)
+                node.imputation_type = 3
+            elif useBirth and node.oldest_path_long[0] == 0:
+                # birth model, assuming that the leaves are infinitesimally close to the next speciation event
+
+                # one lineage to model or two?
+                if not node.up.children[0].is_leaf() and node.up.children[0].oldest_path_long[0] == 0 and not node.up.children[1].is_leaf() and node.up.children[1].oldest_path_long[0] == 0:
+                    lineages = 2
+                    leaves = node.up.num_leaves
+                    choices = [node.up.children[0], node.up.children[1]]
+                else:
+                    lineages = 1
+                    leaves = node.num_leaves
+                    choices = [node]
+
+                crown_date = node.up.date
+                birth_rate = (np.log(lineages) - np.log(leaves+1)) / crown_date
+
+                # dates[0] will be crown date; we do not use this
+                dates = np.log(np.arange(lineages, leaves+1) / (leaves+1)) / birth_rate
+
+                impute_clade_birth_model(choices, dates, rng)
             else:
                 if node.up.imputed_date:
                     if node.up.oldest_path_long[0] == node.oldest_path_long[0] and node.up.oldest_path_long[1] == node.oldest_path_long[1]+1:
@@ -271,10 +326,20 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False):
                     node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
                     node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
 
-                node.date_long  = node.date_above_long - (node.date_above_long - node.oldest_path_long[0])  * node.mu_spacing_long[-(node.oldest_path_long[1]+1)]
+                node.date_long  = node.date_above_long - (node.date_above_long - node.oldest_path_long[0]) * node.mu_spacing_long[-(node.oldest_path_long[1]+1)]
                 node.date_short = node.date_above_short - (node.date_above_short - node.oldest_path_short[0]) * node.mu_spacing_short[-(node.oldest_path_short[1]+1)]
 
+                counts[1] += 1
                 node.date = l*node.date_long + (1-l)*node.date_short
+
+                if l == 1 and m == 0 and node.oldest_path_long[0] == 0:
+                    node.imputation_type = 1
+                elif l == 0 and m == 0 and node.oldest_path_long[0] == 0:
+                    node.imputation_type = 2
+                elif node.oldest_path_long[0] == 0:
+                    node.imputation_type = 5
+                else:
+                    node.imputation_type = 6
 
             node.imputed_date = True
 
@@ -322,13 +387,12 @@ def write_tree_with_branch_lengths(tre, filename):
                  format_root_node=True)
 
 
-def compute_dates(tre, root_date):
-    """Fill in 'date' field with dates, given a tree with branch lengths in units of time. Requires
-    a date for the root node.
+def compute_dates(parent):
+    """Fill in 'date' field with dates, given a tree with branch lengths in units of time. Assume leaf nodes have a date of 0.
     """
-    tre.date = root_date
-    tre.imputed_date = False
-    for node in tre.traverse(strategy="preorder"):
-        if node.up:
-            node.date = node.up.date - node.dist
-            node.imputed_date = False
+    if parent.is_leaf():
+        parent.date = 0
+    else:
+        for child in parent.children:
+            compute_dates(child)
+            parent.date = child.date + child.dist

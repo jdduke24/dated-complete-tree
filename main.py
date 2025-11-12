@@ -7,11 +7,12 @@ import tree_loading
 import tree_labelling
 import tree_fixing
 import tree_dating
+import tree_metrics
 
 import argparse
 import logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.WARNING)
+logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.ERROR)
 
 
 def generate_trees(args):
@@ -35,8 +36,21 @@ def generate_trees(args):
                                                                 descr_years,
                                                                 tree_filename=args.supertree)
 
+    tree_fixing.strip_birds(whole_tre_unmodified)
+    tree_fixing.strip_turtles(whole_tre_unmodified)
+
     tree_dating.label_older_descendants(whole_tre_unmodified)
     tree_dating.dq_date_removal(whole_tre_unmodified)
+
+    tree_fixing.remove_subspecies(whole_tre_unmodified, rng)
+    tree_fixing.impute_species_into_empty_taxa(whole_tre_unmodified)
+
+    tree_fixing.fix_taxonomy_ordering(whole_tre_unmodified)
+
+    tree_labelling.add_anc_ranks(whole_tre_unmodified)
+    tree_labelling.add_desc_ranks(whole_tre_unmodified)
+
+    tree_fixing.forced_taxa_moves(whole_tre_unmodified)
 
     if args.pd_clades:
         pd_clades = [cld.strip() for cld in list(open(args.pd_clades))]
@@ -49,14 +63,10 @@ def generate_trees(args):
             spp_dict[clade] = []
 
     if args.compute_ed:
-        import tree_metrics
         ed_scores = {}
 
     if args.compute_rf:
         args.maintain_species_set = True
-
-    if args.maintain_species_set:
-        import datetime
 
     for n in range(args.num_trees):
         print("Tree number", n+1)
@@ -64,24 +74,6 @@ def generate_trees(args):
         # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
         # reloading everything
         whole_tre = whole_tre_unmodified.copy()
-
-        # Remove anything below species level (this includes promoting some subspecies to species if they are the only
-        # example of their species)
-        if args.maintain_species_set:
-            rng = np.random.default_rng(seed=1)
-
-        tree_fixing.remove_subspecies(whole_tre, rng)
-        tree_fixing.impute_species_into_empty_taxa(whole_tre)
-
-        tree_labelling.add_anc_ranks(whole_tre)
-        tree_labelling.add_desc_ranks(whole_tre)
-
-        #####################################################################################################################
-
-        # Now, fixing the topology:
-        if args.maintain_species_set:
-            sd = datetime.datetime.now().timestamp()
-            rng = np.random.default_rng(seed=sd)
 
         # First, do labelling for steps 1-3:
         #  - 1-2 are independent of each other; step 3 collects up nodes not labelled in 1-2.
@@ -114,15 +106,15 @@ def generate_trees(args):
         # Last of all, polytomy resolution.
         tree_fixing.fix_all_polytomies(whole_tre, rng)
 
-        # Optional - mainly here because it's good for OneZoom: remove one-child nodes. Gives a fully bifurcating tree.
-        #tree_fixing.delete_one_child_nodes(whole_tre)
+        # Remove one-child nodes. Gives a fully bifurcating tree.
+        whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
 
         #####################################################################################################################
 
         # Date imputation
-        tree_dating.remove_inconsistent_dates(whole_tre, whole_tre.date)
+        tree_dating.remove_inconsistent_dates(whole_tre, whole_tre.date+1)
         tree_dating.date_labelling(whole_tre)
-        tree_dating.impute_missing_dates(whole_tre, useLnN=args.use_lnN_interpolation)
+        tree_dating.impute_missing_dates(whole_tre, l=0.25)
 
         # All nodes now dated - set dists in ete and write out tree.
         tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_%d.tre" % (args.output_folder, args.output_tree_filename, n+1))
@@ -192,10 +184,6 @@ def main():
     parser.add_argument("--pd_clades",
                         help="Path of a text file containing a list of node names (one on each line) for which to output PD estimates.",
                         default=None)
-
-    parser.add_argument("--use_lnN_interpolation",
-                        help="Flag: whether to use ln(N) interpolation, rather than BLADJ. Default: False.",
-                        action="store_true")
 
     parser.add_argument("--maintain_species_set",
                         help="Flag: whether to keep the set of species the same across all trees, enabling computation of distance metrics between trees. Default: False.",

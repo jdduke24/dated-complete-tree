@@ -1,6 +1,7 @@
 from chronosynth import chronogram as cg
 import ete3
 import tree_fixing
+import tree_dating
 from taxonomy_utils import tx_levels
 from taxonomy_utils import get_genus_and_species
 import json
@@ -89,8 +90,6 @@ def write_subtree(supertree_filename="opentree14.9_tree/labelled_supertree/label
 
     subtree.write(path=output_filename,schema="newick")
 
-##############################################
-
 
 ##############################################
 # create ete3 tree from my subtree
@@ -101,7 +100,8 @@ def build_and_annotate_tree(dates,
                             descr_years,
                             tree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre",
                             keep_all_dates=False,
-                            ignore_extinct=True):
+                            ignore_extinct=True,
+                            has_branch_lengths=False):
 
     """Build an ETE3 tree containing the Open Tree of Life and annotate it with extra information to be used in topology resolution and dating.
     Removes nodes marked as "extinct" or "extinct_inherited" in the Open Tree Taxonomy."
@@ -116,7 +116,6 @@ def build_and_annotate_tree(dates,
 
     tree_string = open(tree_filename,"r").read()
     tree_string = tree_string.replace("''", "")  # remove '' in names (the tree loader will remove the quotes which wrap single-quoted names)
-    tree_string = tree_string.replace(":", "")  # remove : in names
     tree_string = tree_string.replace('"', "")   # remove all double-quote characters
     tree_string = tree_string.replace('“', "")   # remove all double-quote characters
     tree_string = tree_string.replace('”', "")   # remove all double-quote characters
@@ -125,9 +124,15 @@ def build_and_annotate_tree(dates,
     tree_string = tree_string.replace("о", "o")    # weird unicode o - replace with normal o
     tree_string = tree_string.replace("с", "c")    # weird unicode c - replace with normal c
 
+    if not has_branch_lengths:
+        tree_string = tree_string.replace(":", "")  # remove : in names
+
     tree_string = tree_string.replace(" ", "_")    # replace all spaces with underscores - so Newick format works without quoted names
 
     tre = ete3.Tree(tree_string,format=1,quoted_node_names=True)
+
+    if has_branch_lengths:
+        tre.name = "mrca_root"
 
     logger.info("ETE3 tree loaded. Beginning annotation")
 
@@ -141,12 +146,13 @@ def build_and_annotate_tree(dates,
         node.name = node.name.strip("_")
         node.name = node.name.replace(',', "")   # remove commas in node names
         descr_year = None
+
         if node.name[:4] == "mrca":
             tx_level = "mrca"
             ott_name = node.name
             if not ignore_extinct:
                 node.add_feature("extinct", False)
-        elif node.name[:11] == "uncultured_" or node.name[:13] == "unidentified_" or "intergeneric_hybrids" in node.name:
+        elif node.name[:11] == "uncultured_" or node.name[:11] == "Uncultured_" or node.name[:13] == "unidentified_" or node.name[:13] == "Unidentified_" or "intergeneric_hybrids" in node.name:
             extinct_nodes.add(node)
             ott_name = node.name
             continue
@@ -183,7 +189,7 @@ def build_and_annotate_tree(dates,
         node.add_feature("tx_level", tx_level)
         # node.add_feature("descr_year", descr_year)
 
-        if ott_name in phylogeny_nodes:
+        if ott_name in phylogeny_nodes or has_branch_lengths:
             node.add_feature("ph_tx", "PH")
             #del phylogeny_nodes[ott_name]
         else:
@@ -193,40 +199,47 @@ def build_and_annotate_tree(dates,
                 extinct_nodes.add(node)
                 continue
 
-        date = None
-        sources = None
-        if ott_name in dates['node_ages']:
-            ages = [float(source['age']) for source in dates['node_ages'][ott_name]]
-            if keep_all_dates:
+        if not has_branch_lengths:
+            date = None
+            sources = None
+            if ott_name in dates['node_ages']:
                 sources = [source['source_id'] for source in dates['node_ages'][ott_name]]
-                date = ages
-            else:
-                ages.sort()
-
-                num_ages = len(ages)
-                midpoint = int((num_ages-1)/2)
-                if num_ages % 2 == 0:
-                    # assume num_ages > 0 or we wouldn't have got here
-                    median_age = (ages[midpoint] + ages[midpoint+1]) / 2
+                ages = [float(source['age']) for source in dates['node_ages'][ott_name]]
+                if keep_all_dates:
+                    # sources = [source['source_id'] for source in dates['node_ages'][ott_name]]
+                    date = ages
                 else:
-                    median_age = ages[midpoint]
+                    ages.sort()
 
-                if node.is_leaf():
-                    logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
+                    num_ages = len(ages)
+                    midpoint = int((num_ages-1)/2)
+                    if num_ages % 2 == 0:
+                        # assume num_ages > 0 or we wouldn't have got here
+                        median_age = (ages[midpoint] + ages[midpoint+1]) / 2
+                    else:
+                        median_age = ages[midpoint]
 
-                if not node.is_leaf() and median_age < 0.000001:
-                    logger.warning("Warning: computed median age of zero on interior node %s; instead, setting date for this node to None" % node.name)
+                    if node.is_leaf():
+                        logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
+
+                    if not node.is_leaf() and median_age < 0.000001:
+                        logger.warning("Warning: computed median age of zero on interior node %s; instead, setting date for this node to None" % node.name)
+                    else:
+                        date = median_age
+            elif node.is_leaf():
+                if keep_all_dates:
+                    date = [0]
                 else:
-                    date = median_age
-        elif node.is_leaf():
+                    date = 0
+            node.add_feature("date", date)
+            node.add_feature("imputed_date", False)
+            node.add_feature("imputation_type", 0)
             if keep_all_dates:
-                date = [0]
-            else:
-                date = 0
-        node.add_feature("date", date)
-        node.add_feature("imputed_date", False)
-        if keep_all_dates:
-            node.add_feature("date_sources", sources)
+                node.add_feature("date_sources", sources)
+        else:
+            node.add_feature("date", None)
+            node.add_feature("imputed_date", False)
+            node.add_feature("imputation_type", 0)
 
         if not ignore_extinct and node.extinct and node.date is None:
             # ignore extinct nodes with no date
@@ -254,5 +267,9 @@ def build_and_annotate_tree(dates,
         logger.info("Deleting extinct or unwanted node %s and tree below it." % node.name)
         tree_fixing.remove_tree_below(node)
         tree_fixing.remove_node_and_parents(node, False)
+
+    if has_branch_lengths:
+        tree_dating.compute_dates(tre)
+        tree_dating.compute_branch_lengths(tre) # may modify existing branch lengths! - ensures tree is ultrametric
 
     return tre
