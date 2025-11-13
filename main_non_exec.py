@@ -20,10 +20,10 @@ logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging
 sys.setrecursionlimit(10000)
 
 # Load metadata for tree from Open Tree, Chronosynth and OneZoom
-dates, phylogeny_nodes, taxa, descr_years = tree_loading.load_metadata()
+dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
-whole_tre_unmodified = tree_loading.build_and_annotate_tree(dates, phylogeny_nodes, taxa, descr_years)
+whole_tre_unmodified = tree_loading.build_and_annotate_tree(dates, phylogeny_nodes, taxa)
 
 tree_fixing.strip_birds(whole_tre_unmodified)
 tree_fixing.strip_turtles(whole_tre_unmodified)

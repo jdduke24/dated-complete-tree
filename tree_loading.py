@@ -18,14 +18,12 @@ logger = logging.getLogger(__name__)
 
 def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
                       phylogeny="opentree14.9_tree/annotations.json",
-                      taxonomy="ott3.6/taxonomy.tsv",
-                      descr_dates="oz_data/descr_dates.csv"):
+                      taxonomy="ott3.6/taxonomy.tsv"):
     """Load metadata.
     Takes:
     date_cache -- string specifying path for a JSON file which will be used by Chronosynth to cache date information from phylogenies.
     phylogeny -- string specifying path for the annotations.json file from a Open Tree tree release.
     taxonomy -- string specifying path for the taxonomy.tsv file from an Open Tree Taxonomy release.
-    desc_dates - string specifying a CSV file containing the dates of scientific descriptions, by OTT id.
 
     Returns:
     dates -- JSON dictionary containing dates from phylogenies.
@@ -33,7 +31,6 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
                        rather than only in taxonomy.
     taxa -- dictionary; keys are ids from the Open Tree Taxonomy; values are a tuple with the taxonomic level string (e.g. 'species') and a True/False
             flag specifying whether the taxon is extinct.
-    descr_years -- dictionary: keys are OTT ids as integers; values are integer years of scientific description of the taxon, if available.
     """
 
     # get all dates from phylesystem studies
@@ -57,13 +54,7 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
 
         taxa[int(components[0].strip())] = (components[3].strip(), extinct)
 
-    descr_years = {}
-    descr_file = open(descr_dates,"r")
-    for line in descr_file.readlines():
-        components = line.split(",")
-        descr_years[int(components[0].strip())] = int(components[2].strip())
-
-    return dates, phylogeny_nodes, taxa, descr_years
+    return dates, phylogeny_nodes, taxa
 
 ##############################################
 
@@ -97,7 +88,6 @@ def write_subtree(supertree_filename="opentree14.9_tree/labelled_supertree/label
 def build_and_annotate_tree(dates,
                             phylogeny_nodes,
                             taxa,
-                            descr_years,
                             tree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre",
                             keep_all_dates=False,
                             ignore_extinct=True,
@@ -107,7 +97,7 @@ def build_and_annotate_tree(dates,
     Removes nodes marked as "extinct" or "extinct_inherited" in the Open Tree Taxonomy."
 
     Takes:
-    dates, phylogeny_nodes, taxa, descr_years -- the outputs of load_metadata().
+    dates, phylogeny_nodes, taxa -- the outputs of load_metadata().
     tree_filename -- string specifying path to a newick tree to be loaded.
 
     Returns:
@@ -145,7 +135,6 @@ def build_and_annotate_tree(dates,
         node.name = node.name.strip("'")
         node.name = node.name.strip("_")
         node.name = node.name.replace(',', "")   # remove commas in node names
-        descr_year = None
 
         if node.name[:4] == "mrca":
             tx_level = "mrca"
@@ -183,15 +172,10 @@ def build_and_annotate_tree(dates,
                 tx_level = "variety"
                 logger.info("Based on name, %s given rank 'variety' rather than 'no rank - terminal'." % node.name)
 
-            if ott_uid in descr_years:
-                descr_year = descr_years[ott_uid]
-
         node.add_feature("tx_level", tx_level)
-        # node.add_feature("descr_year", descr_year)
 
         if ott_name in phylogeny_nodes or has_branch_lengths:
             node.add_feature("ph_tx", "PH")
-            #del phylogeny_nodes[ott_name]
         else:
             node.add_feature("ph_tx", "TX")
             if not ignore_extinct and node.extinct:

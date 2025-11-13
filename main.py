@@ -24,16 +24,14 @@ def generate_trees(args):
     rng = np.random.default_rng(seed=1)
 
     # Load metadata for tree from Open Tree, Chronosynth and OneZoom
-    dates, phylogeny_nodes, taxa, descr_years = tree_loading.load_metadata(date_cache=args.date_cache,
-                                                                           phylogeny=args.phylogeny,
-                                                                           taxonomy=args.taxonomy,
-                                                                           descr_dates=args.descr_dates)
+    dates, phylogeny_nodes, taxa = tree_loading.load_metadata(date_cache=args.date_cache,
+                                                              phylogeny=args.phylogeny,
+                                                              taxonomy=args.taxonomy)
 
     # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
     whole_tre_unmodified = tree_loading.build_and_annotate_tree(dates,
                                                                 phylogeny_nodes,
                                                                 taxa,
-                                                                descr_years,
                                                                 tree_filename=args.supertree)
 
     tree_fixing.strip_birds(whole_tre_unmodified)
@@ -176,10 +174,6 @@ def main():
     parser.add_argument("--taxonomy",
                         help="Path of the taxonomy.tsv file from the Open Tree Taxonomy",
                         default="ott3.6/taxonomy.tsv")
-
-    parser.add_argument("--descr_dates",
-                        help="Path of a csv file containing description dates for species",
-                        default="oz_data/descr_dates.csv")
 
     parser.add_argument("--pd_clades",
                         help="Path of a text file containing a list of node names (one on each line) for which to output PD estimates.",
