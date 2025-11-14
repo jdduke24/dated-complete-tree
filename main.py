@@ -137,6 +137,7 @@ def generate_trees(args):
 
 
     if args.compute_ed:
+        print("Writing out ED score distributions for all species (takes ~5 minutes)")
         tree_metrics.write_ed_scores("%s/%s_ed_scores.txt" % (args.output_folder, args.output_tree_filename), ed_scores)
 
     if args.pd_clades:

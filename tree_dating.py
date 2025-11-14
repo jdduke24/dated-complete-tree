@@ -12,7 +12,7 @@ def assign_dates(tre, dates, keep_all_dates=False):
         date = None
         sources = None
 
-        if node.is_leaf():
+        if node.is_leaf:
             if keep_all_dates:
                 date = [0]
             else:
@@ -34,20 +34,20 @@ def assign_dates(tre, dates, keep_all_dates=False):
                 else:
                     median_age = ages[midpoint]
 
-                if node.is_leaf():
+                if node.is_leaf:
                     logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
 
-                if not node.is_leaf() and median_age < 0.000001:
+                if not node.is_leaf and median_age < 0.000001:
                     logger.warning("Warning: computed median age of zero on interior node %s; instead, setting date for this node to None" % node.name)
                 else:
                     date = median_age
 
-        node.add_feature("date", date)
-        node.add_feature("imputed_date", False)
-        node.add_feature("imputation_type", 0)
+        node.add_prop("date", date)
+        node.add_prop("imputed_date", False)
+        node.add_prop("imputation_type", 0)
 
         if keep_all_dates:
-            node.add_feature("date_sources", sources)
+            node.add_prop("date_sources", sources)
 
 
 def remove_inconsistent_dates(parent, mrad=None):
@@ -58,19 +58,19 @@ def remove_inconsistent_dates(parent, mrad=None):
 
     if mrad is None:
         # must be root node
-        if not parent.date:
+        if not parent.props["date"]:
             raise Exception("Require root date.")
-        next_mrad = parent.date
+        next_mrad = parent.props["date"]
     else:
         next_mrad = mrad
         # if we have a date, check it against the most recent ancestor
-        if parent.date:
-            if round(parent.date,6) >= round(mrad,6):
+        if parent.props["date"]:
+            if round(parent.props["date"],6) >= round(mrad,6):
                 # if it is older than an ancestor, throw away the date information at this node
-                parent.date = None
+                parent.props["date"] = None
                 logger.info("Removing inconsistent date at node %s." % parent.name)
             else:
-                next_mrad = parent.date
+                next_mrad = parent.props["date"]
 
     for child in parent.children:
         remove_inconsistent_dates(child, next_mrad)
@@ -86,7 +86,7 @@ def strip_undated_nodes(tre):
         if node == stripped_tre:
             continue
 
-        if not node.date:
+        if not node.props["date"]:
             nodes_to_remove.append(node)
 
     for node in nodes_to_remove:
@@ -109,13 +109,13 @@ def label_older_descendants(parent):
         child_descendants = label_older_descendants(child)
         descendants.extend(child_descendants)
         # ignore node if is has no date (None) or a date of 0
-        if child.date:
+        if child.props["date"]:
             descendants.append(child)
 
     # store list of descendant nodes with an older date than this node
-    if parent.date:
-        parent.older_descendants = [
-            child for child in descendants if round(child.date,6) >= round(parent.date,6)
+    if parent.props["date"]:
+        parent.props["older_descendants"] = [
+            child for child in descendants if round(child.props["date"],6) >= round(parent.props["date"],6)
         ]
 
     return descendants
@@ -135,8 +135,8 @@ def build_dq_dict(tre):
             # ignore root node; we assume this is correct
             continue
 
-        if node.date and len(node.older_descendants) > 0:
-            for desc_node in node.older_descendants:
+        if node.props["date"] and len(node.props["older_descendants"]) > 0:
+            for desc_node in node.props["older_descendants"]:
                 if node.name not in dq_dict:
                     dq_dict[node.name] = [set([]), set([]), node]
                 if desc_node.name not in dq_dict:
@@ -177,7 +177,7 @@ def dq_date_removal(tre):
         else:
             mrca = 0
 
-        return (x[0], mrca, -round(x[1].date,6))
+        return (x[0], mrca, -round(x[1].props["date"],6))
 
     if len(dq_counts_info) == 0:
         print("No inconsistent dates to remove.")
@@ -188,7 +188,7 @@ def dq_date_removal(tre):
     while max_count[0] > 0:
         node_to_blank = max_count[1]
 
-        node_to_blank.date = None
+        node_to_blank.props["date"] = None
 
         dq_counts_info.remove(max_count)
 
@@ -220,8 +220,8 @@ def date_labelling(parent):
     Return value is: [oldest date found so far below this node, longest path length to it],
                      [oldest date found so far below this node, shortest path length to it]
     """
-    if parent.is_leaf():
-        if parent.date != 0:
+    if parent.is_leaf:
+        if parent.props["date"] != 0:
             logger.warning("Leaf node %s has non-zero date." % parent.name)
     else:
         oldest_path_long = [0, -1e8]
@@ -231,17 +231,17 @@ def date_labelling(parent):
             oldest_path_long = max(oldest_path_long, new_path_long)
             oldest_path_short = max(oldest_path_short, new_path_short, key=use_shortest_path)
 
-    if parent.date is None:
-        parent.oldest_path_long = copy.copy(oldest_path_long)
-        parent.oldest_path_short = copy.copy(oldest_path_short)
+    if parent.props["date"] is None:
+        parent.props["oldest_path_long"] = copy.copy(oldest_path_long)
+        parent.props["oldest_path_short"] = copy.copy(oldest_path_short)
         oldest_path_long[1] += 1
         oldest_path_short[1] += 1
     else:
         # if there is a date, doesn't matter what was received; just return this date
-        oldest_path_long = [parent.date, 0]
-        oldest_path_short = [parent.date, 0]
-        parent.oldest_path_long = copy.copy(oldest_path_long)
-        parent.oldest_path_short = copy.copy(oldest_path_short)
+        oldest_path_long = [parent.props["date"], 0]
+        oldest_path_short = [parent.props["date"], 0]
+        parent.props["oldest_path_long"] = copy.copy(oldest_path_long)
+        parent.props["oldest_path_short"] = copy.copy(oldest_path_short)
         oldest_path_long[1] += 1
         oldest_path_short[1] += 1
 
@@ -252,20 +252,20 @@ def impute_clade_birth_model(choices, dates, rng):
     # assumes a bifurcating tree
     i = 1
     while len(choices) > 0:
-        probs = np.array([c.num_leaves-1 for c in choices])
+        probs = np.array([c.props["num_leaves"]-1 for c in choices])
         probs = probs / np.sum(probs)
 
         next_node = rng.choice(choices, p=probs)
 
-        next_node.date = dates[i]
-        next_node.imputation_type = 4
-        next_node.imputed_date = True
+        next_node.props["date"] = dates[i]
+        next_node.props["imputation_type"] = 4
+        next_node.props["imputed_date"] = True
 
         choices.remove(next_node)
 
-        if not next_node.children[0].is_leaf():
+        if not next_node.children[0].is_leaf:
             choices.append(next_node.children[0])
-        if not next_node.children[1].is_leaf():
+        if not next_node.children[1].is_leaf:
             choices.append(next_node.children[1])
 
         i += 1
@@ -287,9 +287,9 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, 
     """
     if useLnN or useBirth:
         def label_pct_dates(parent):
-            if parent.is_leaf():
+            if parent.is_leaf:
                 results = [0,0,1]
-            elif not parent.date:
+            elif not parent.props["date"]:
                 results = [1,0,0]
             else:
                 results = [1,1,0]
@@ -300,9 +300,9 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, 
                 results[1] += new_results[1]
                 results[2] += new_results[2]
 
-            parent.add_feature("child_tree_size", results[0])
-            parent.add_feature("num_dates", results[1])
-            parent.add_feature("num_leaves", results[2])
+            parent.add_prop("child_tree_size", results[0])
+            parent.add_prop("num_dates", results[1])
+            parent.add_prop("num_leaves", results[2])
 
             return results
 
@@ -310,33 +310,33 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, 
 
     for node in tre.traverse(strategy="preorder"):
         if node is tre:
-            node.imputed_date = False
+            node.props["imputed_date"] = False
             continue
 
-        if node.date is None:
-            if useLnN and node.oldest_path_long[0] == 0:
+        if node.props["date"] is None:
+            if useLnN and node.props["oldest_path_long"][0] == 0:
                 counts[0] += 1
-                if node.num_leaves > 1 and node.up.num_leaves > 1 and node.up.num_leaves > node.num_leaves:
-                    node.date = node.up.date * np.log(node.num_leaves)/np.log(node.up.num_leaves)
+                if node.props["num_leaves"] > 1 and node.up.props["num_leaves"] > 1 and node.up.props["num_leaves"] > node.props["num_leaves"]:
+                    node.props["date"] = node.up.props["date"] * np.log(node.props["num_leaves"])/np.log(node.up.props["num_leaves"])
                 else:
                     # need backup option of standard BLADJ in case of o---o---o situation or where num_leaves is the same for
                     # both parent and child
-                    node.date = node.up.date - (node.up.date - node.oldest_path_long[0]) / (node.oldest_path_long[1]+1)
-                node.imputation_type = 3
-            elif useBirth and node.oldest_path_long[0] == 0:
+                    node.props["date"] = node.up.props["date"] - (node.up.props["date"] - node.props["oldest_path_long"][0]) / (node.props["oldest_path_long"][1]+1)
+                node.props["imputation_type"] = 3
+            elif useBirth and node.props["oldest_path_long"][0] == 0:
                 # birth model, assuming that the leaves are infinitesimally close to the next speciation event
 
                 # one lineage to model or two?
-                if not node.up.children[0].is_leaf() and node.up.children[0].oldest_path_long[0] == 0 and not node.up.children[1].is_leaf() and node.up.children[1].oldest_path_long[0] == 0:
+                if not node.up.children[0].is_leaf and node.up.children[0].props["oldest_path_long"][0] == 0 and not node.up.children[1].is_leaf and node.up.children[1].props["oldest_path_long"][0] == 0:
                     lineages = 2
-                    leaves = node.up.num_leaves
+                    leaves = node.up.props["num_leaves"]
                     choices = [node.up.children[0], node.up.children[1]]
                 else:
                     lineages = 1
-                    leaves = node.num_leaves
+                    leaves = node.props["num_leaves"]
                     choices = [node]
 
-                crown_date = node.up.date
+                crown_date = node.up.props["date"]
                 birth_rate = (np.log(lineages) - np.log(leaves+1)) / crown_date
 
                 # dates[0] will be crown date; we do not use this
@@ -344,49 +344,49 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, 
 
                 impute_clade_birth_model(choices, dates, rng)
             else:
-                if node.up.imputed_date:
-                    if node.up.oldest_path_long[0] == node.oldest_path_long[0] and node.up.oldest_path_long[1] == node.oldest_path_long[1]+1:
-                        node.date_above_long = node.up.date_above_long
-                        node.mu_spacing_long = node.up.mu_spacing_long
+                if node.up.props["imputed_date"]:
+                    if node.up.props["oldest_path_long"][0] == node.props["oldest_path_long"][0] and node.up.props["oldest_path_long"][1] == node.props["oldest_path_long"][1]+1:
+                        node.props["date_above_long"] = node.up.props["date_above_long"]
+                        node.props["mu_spacing_long"] = node.up.props["mu_spacing_long"]
                     else:
-                        node.date_above_long = node.up.date_long
-                        mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
-                        node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
+                        node.props["date_above_long"] = node.up.props["date_long"]
+                        mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.props["oldest_path_long"][1]+1))
+                        node.props["mu_spacing_long"]  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
 
-                    if node.up.oldest_path_short[0] == node.oldest_path_short[0] and node.up.oldest_path_short[1] == node.oldest_path_short[1]+1:
-                        node.date_above_short = node.up.date_above_short
-                        node.mu_spacing_short = node.up.mu_spacing_short
+                    if node.up.props["oldest_path_short"][0] == node.props["oldest_path_short"][0] and node.up.props["oldest_path_short"][1] == node.props["oldest_path_short"][1]+1:
+                        node.props["date_above_short"] = node.up.props["date_above_short"]
+                        node.props["mu_spacing_short"] = node.up.props["mu_spacing_short"]
                     else:
-                        node.date_above_short = node.up.date_short
-                        mu_spacing_short = np.exp(m * np.linspace(0, 1, node.oldest_path_short[1]+1))
-                        node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
+                        node.props["date_above_short"] = node.up.props["date_short"]
+                        mu_spacing_short = np.exp(m * np.linspace(0, 1, node.props["oldest_path_short"][1]+1))
+                        node.props["mu_spacing_short"] = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
 
                 else:
-                    node.date_above_long = node.up.date
-                    node.date_above_short = node.up.date
+                    node.props["date_above_long"] = node.up.props["date"]
+                    node.props["date_above_short"] = node.up.props["date"]
 
-                    mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.oldest_path_long[1]+1))
-                    mu_spacing_short = np.exp(m * np.linspace(0, 1, node.oldest_path_short[1]+1))
+                    mu_spacing_long  = np.exp(m * np.linspace(0, 1, node.props["oldest_path_long"][1]+1))
+                    mu_spacing_short = np.exp(m * np.linspace(0, 1, node.props["oldest_path_short"][1]+1))
 
-                    node.mu_spacing_long  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
-                    node.mu_spacing_short = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
+                    node.props["mu_spacing_long"]  = np.cumsum( mu_spacing_long  / np.sum(mu_spacing_long) )
+                    node.props["mu_spacing_short"] = np.cumsum( mu_spacing_short / np.sum(mu_spacing_short) )
 
-                node.date_long  = node.date_above_long - (node.date_above_long - node.oldest_path_long[0]) * node.mu_spacing_long[-(node.oldest_path_long[1]+1)]
-                node.date_short = node.date_above_short - (node.date_above_short - node.oldest_path_short[0]) * node.mu_spacing_short[-(node.oldest_path_short[1]+1)]
+                node.props["date_long"]  = node.props["date_above_long"] - (node.props["date_above_long"] - node.props["oldest_path_long"][0]) * node.props["mu_spacing_long"][-(node.props["oldest_path_long"][1]+1)]
+                node.props["date_short"] = node.props["date_above_short"] - (node.props["date_above_short"] - node.props["oldest_path_short"][0]) * node.props["mu_spacing_short"][-(node.props["oldest_path_short"][1]+1)]
 
                 counts[1] += 1
-                node.date = l*node.date_long + (1-l)*node.date_short
+                node.props["date"] = l*node.props["date_long"] + (1-l)*node.props["date_short"]
 
-                if l == 1 and m == 0 and node.oldest_path_long[0] == 0:
-                    node.imputation_type = 1
-                elif l == 0 and m == 0 and node.oldest_path_long[0] == 0:
-                    node.imputation_type = 2
-                elif node.oldest_path_long[0] == 0:
-                    node.imputation_type = 5
+                if l == 1 and m == 0 and node.props["oldest_path_long"][0] == 0:
+                    node.props["imputation_type"] = 1
+                elif l == 0 and m == 0 and node.props["oldest_path_long"][0] == 0:
+                    node.props["imputation_type"] = 2
+                elif node.props["oldest_path_long"][0] == 0:
+                    node.props["imputation_type"] = 5
                 else:
-                    node.imputation_type = 6
+                    node.props["imputation_type"] = 6
 
-            node.imputed_date = True
+            node.props["imputed_date"] = True
 
 
 def round_to_4sf(x):
@@ -409,14 +409,14 @@ def compute_branch_lengths(tre, round_numbers=False):
     """Fill in 'dist' field with branch lengths. Intended for a fully dated tree."""
     for node in tre.traverse():
         if node.up:
-            dist = node.up.date - node.date
+            dist = node.up.props["date"] - node.props["date"]
             if dist < 0:
                 logger.warning("Warning: Negative branch length above %s" % node.name)
 
             if round_numbers:
-                node.dist = round_to_4sf(node.up.date - node.date)
+                node.dist = round_to_4sf(dist)
             else:
-                node.dist = node.up.date - node.date
+                node.dist = dist
 
 
 def write_tree_with_branch_lengths(tre, filename):
@@ -425,16 +425,16 @@ def write_tree_with_branch_lengths(tre, filename):
     compute_branch_lengths(tre, round_numbers=False)
 
     tre.write(outfile=filename,
-                 format=1,
+                 parser=1,
                  format_root_node=True)
 
 
 def compute_dates(parent):
     """Fill in 'date' field with dates, given a tree with branch lengths in units of time. Assume leaf nodes have a date of 0.
     """
-    if parent.is_leaf():
-        parent.date = 0
+    if parent.is_leaf:
+        parent.props["date"] = 0
     else:
         for child in parent.children:
             compute_dates(child)
-            parent.date = child.date + child.dist
+            parent.props["date"] = child.props["date"] + child.dist

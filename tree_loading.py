@@ -1,5 +1,5 @@
 from chronosynth import chronogram as cg
-import ete3
+import ete4
 import tree_fixing
 import tree_dating
 from taxonomy_utils import tx_levels
@@ -85,7 +85,7 @@ def build_and_annotate_tree(phylogeny_nodes,
 
     tree_string = tree_string.replace(" ", "_")    # replace all spaces with underscores - so Newick format works without quoted names
 
-    tre = ete3.Tree(tree_string,format=1,quoted_node_names=True)
+    tre = ete4.Tree(tree_string, parser=1)
 
     if has_branch_lengths:
         tre.name = "mrca_root"
@@ -106,7 +106,7 @@ def build_and_annotate_tree(phylogeny_nodes,
             tx_level = "mrca"
             ott_name = node.name
             if not ignore_extinct:
-                node.add_feature("extinct", False)
+                node.add_prop("extinct", False)
         elif node.name[:11] == "uncultured_" or node.name[:11] == "Uncultured_" or node.name[:13] == "unidentified_" or node.name[:13] == "Unidentified_" or "intergeneric_hybrids" in node.name:
             extinct_nodes.add(node)
             ott_name = node.name
@@ -125,9 +125,9 @@ def build_and_annotate_tree(phylogeny_nodes,
                     continue
             else:
                 if taxa[ott_uid][1] or node.name[:1] == 'x_':
-                    node.add_feature("extinct", True)
+                    node.add_prop("extinct", True)
                 else:
-                    node.add_feature("extinct", False)
+                    node.add_prop("extinct", False)
 
             tx_level = taxa[ott_uid][0]
 
@@ -138,21 +138,21 @@ def build_and_annotate_tree(phylogeny_nodes,
                 tx_level = "variety"
                 logger.info("Based on name, %s given rank 'variety' rather than 'no rank - terminal'." % node.name)
 
-        node.add_feature("tx_level", tx_level)
+        node.add_prop("tx_level", tx_level)
 
         if ott_name in phylogeny_nodes or has_branch_lengths:
-            node.add_feature("ph_tx", "PH")
+            node.add_prop("ph_tx", "PH")
         else:
-            node.add_feature("ph_tx", "TX")
+            node.add_prop("ph_tx", "TX")
             if not ignore_extinct and node.extinct:
                 # ignore extinct nodes from taxonomy
                 extinct_nodes.add(node)
                 continue
 
         if has_branch_lengths:
-            node.add_feature("date", None)
-            node.add_feature("imputed_date", False)
-            node.add_feature("imputation_type", 0)
+            node.add_prop("date", None)
+            node.add_prop("imputed_date", False)
+            node.add_prop("imputation_type", 0)
 
         if not ignore_extinct and node.extinct and node.date is None:
             # ignore extinct nodes with no date
@@ -164,10 +164,10 @@ def build_and_annotate_tree(phylogeny_nodes,
             if species == "extinct":
                 extinct_nodes.add(node)
                 continue
-            node.add_feature("genus_name", genus)
-            node.add_feature("species_name", species)
+            node.add_prop("genus_name", genus)
+            node.add_prop("species_name", species)
 
-        node.add_feature("info", None)
+        node.add_prop("info", None)
 
         count += 1
         if count % 10000 == 0:

@@ -1,5 +1,5 @@
 import os
-os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dating_later/dated-complete-tree')
+os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dated-complete-tree')
 
 import sys
 import numpy as np

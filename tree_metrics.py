@@ -7,25 +7,31 @@ logger = logging.getLogger(__name__)
 
 
 def num_desc_leaves(parent):
-    if parent.is_leaf():
-        parent.add_feature("desc_leaves", 1)
+    if parent.is_leaf:
+        parent.add_prop("desc_leaves", 1)
         return 1
     else:
         leaves = 0
         for child in parent.children:
             leaves += num_desc_leaves(child)
-        parent.add_feature("desc_leaves", leaves)
+        parent.add_prop("desc_leaves", leaves)
         return leaves
 
 
 def accumulate_ed_scores(parent, running_sum, all_scores, get_dict=True, root=True):
     if not root:
-        running_sum += parent.dist/parent.desc_leaves
+        running_sum += parent.dist/parent.props["desc_leaves"]
 
-    parent.add_feature("ed_score", running_sum)
+    parent.add_prop("ed_score", running_sum)
 
-    if parent.is_leaf() and get_dict:
-        all_scores[(parent.name, parent.domain, parent.kingdom, parent.phylum, parent.clas, parent.order, parent.family)] = running_sum
+    if parent.is_leaf and get_dict:
+        all_scores[(parent.name,
+                    parent.props["domain"],
+                    parent.props["kingdom"],
+                    parent.props["phylum"],
+                    parent.props["clas"],
+                    parent.props["order"],
+                    parent.props["family"])] = running_sum
     else:
         for child in parent.children:
             accumulate_ed_scores(child, running_sum, all_scores, get_dict, False)
@@ -35,12 +41,12 @@ def get_ed_scores(dated_tre, get_dict=True):
     # first, compute branch lengths
     for node in dated_tre.traverse():
         if node.up:
-            if node.is_leaf():
+            if node.is_leaf:
                 this_date = 0
             else:
-                this_date = node.date
+                this_date = node.props["date"]
 
-            parent_date = node.up.date
+            parent_date = node.up.props["date"]
 
             node.dist = parent_date - this_date
 
@@ -91,23 +97,26 @@ def write_ed_scores(filename, scores):
     fout.close()
 
 
-def compute_pd(parent):
+def compute_pd(parent, root_call=True):
     """Compute total PD below each node. Assume the tree has branch lengths."""
     pd = 0
     for child in parent.children:
-        pd += compute_pd(child)
+        pd += compute_pd(child, False)
 
-    parent.add_feature("pd", pd)
+    parent.add_prop("pd", pd)
 
-    return pd + parent.dist
+    if root_call:
+        return pd
+    else:
+        return pd + parent.dist
 
 
 def save_pd_for_clades(tre, pd_clades, pd_dict, dates_dict, spp_dict):
     for node in tre.traverse():
         if node.name in pd_clades:
-            pd_dict[node.name].append(node.pd)
-            dates_dict[node.name].append(node.date)
-            spp_dict[node.name].append(len(node.get_leaves()))
+            pd_dict[node.name].append(node.props["pd"])
+            dates_dict[node.name].append(node.props["date"])
+            spp_dict[node.name].append(len(node))
 
 
 def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
@@ -170,8 +179,8 @@ def compute_gamma(tre):
 
     dates_list = []
     for node in tre.traverse():
-        if node.date > 0:
-            dates_list.append(node.date)
+        if node.props["date"] > 0:
+            dates_list.append(node.props["date"])
 
     dates_list.sort(reverse=True)
 
@@ -180,7 +189,7 @@ def compute_gamma(tre):
         g.append(dates_list[i-1] - dates_list[i])
     g.append(dates_list[-1])
 
-    n = len(tre.get_leaves())
+    n = len(tre.leaves())
 
     T = 0
     for j in range(2, n+1):
@@ -240,10 +249,10 @@ def date_labelling_guo(parent):
     and the path length (number of nodes) to that date.
     Return value is: [oldest date found so far below this node, path length to it]
     """
-    if parent.is_leaf():
-        if parent.date != 0:
+    if parent.is_leaf:
+        if parent.props["date"] != 0:
             print("Leaf node with non-zero date")
-        oldest_paths = [[parent.date, 1]]
+        oldest_paths = [[parent.props["date"], 1]]
         parent.oldest_paths = oldest_paths
     else:
         oldest_paths = []
@@ -252,12 +261,12 @@ def date_labelling_guo(parent):
             for path in child_paths:
                 oldest_paths.append(path)
 
-        if parent.date is None:
+        if parent.props["date"] is None:
             parent.oldest_paths = oldest_paths
             for path in oldest_paths:
                 path[1] += 1
         else:
-            oldest_paths = [[parent.date, 1]]
+            oldest_paths = [[parent.props["date"], 1]]
             parent.oldest_paths = oldest_paths
 
     return oldest_paths
@@ -269,13 +278,13 @@ def compute_ed_scores_guo(parent, ancestral_date, root=True):
     if not root:
         for path in parent.oldest_paths:
             if path[1] != 0:
-                ed_scores.append(((ancestral_date-path[0])/path[1]) / parent.desc_leaves)
+                ed_scores.append(((ancestral_date-path[0])/path[1]) / parent.props["desc_leaves"])
 
-    parent.add_feature("ed_scores_guo", ed_scores)
+    parent.add_prop("ed_scores_guo", ed_scores)
 
     for child in parent.children:
-        if parent.date:
-            compute_ed_scores_guo(child, parent.date, False)
+        if parent.props["date"]:
+            compute_ed_scores_guo(child, parent.props["date"], False)
         else:
             compute_ed_scores_guo(child, ancestral_date, False)
 
@@ -302,11 +311,11 @@ def lineages_through_time(tre):
     dates_list = []
     nonimputed_dates = []
     for node in tre.traverse():
-        if node.date > 0:
-            dates_list.append((node.date, len(node.children)-1))
+        if node.props["date"] > 0:
+            dates_list.append((node.props["date"], len(node.children)-1))
 
             if not node.imputed_date:
-                nonimputed_dates.append(-node.date)
+                nonimputed_dates.append(-node.props["date"])
 
     dates_list.sort(reverse=True)
 
