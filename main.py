@@ -23,22 +23,19 @@ def generate_trees(args):
 
     rng = np.random.default_rng(seed=1)
 
-    # Load metadata for tree from Open Tree, Chronosynth and OneZoom
-    dates, phylogeny_nodes, taxa = tree_loading.load_metadata(date_cache=args.date_cache,
-                                                              phylogeny=args.phylogeny,
-                                                              taxonomy=args.taxonomy)
+    #####################################################################################################################
+    # Load and prune tree
+
+    # Load metadata for tree from Open Tree and Chronosynth
+    dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
 
     # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
-    whole_tre_unmodified = tree_loading.build_and_annotate_tree(dates,
-                                                                phylogeny_nodes,
-                                                                taxa,
-                                                                tree_filename=args.supertree)
+    whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa)
 
     tree_fixing.strip_birds(whole_tre_unmodified)
     tree_fixing.strip_turtles(whole_tre_unmodified)
 
-    tree_dating.label_older_descendants(whole_tre_unmodified)
-    tree_dating.dq_date_removal(whole_tre_unmodified)
+    rng = np.random.default_rng(seed=1)
 
     tree_fixing.remove_subspecies(whole_tre_unmodified, rng)
     tree_fixing.impute_species_into_empty_taxa(whole_tre_unmodified)
@@ -72,6 +69,9 @@ def generate_trees(args):
         # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
         # reloading everything
         whole_tre = whole_tre_unmodified.copy()
+
+        #####################################################################################################################
+        # Fix topology
 
         # First, do labelling for steps 1-3:
         #  - 1-2 are independent of each other; step 3 collects up nodes not labelled in 1-2.
@@ -108,11 +108,19 @@ def generate_trees(args):
         whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
 
         #####################################################################################################################
+        # Assign and interpolate dates
+
+        # Assign dates
+        tree_dating.assign_dates(whole_tre, dates)
+
+        # Date cleaning to ensure time consistency down the tree
+        tree_dating.label_older_descendants(whole_tre)
+        tree_dating.dq_date_removal(whole_tre)
 
         # Date imputation
-        tree_dating.remove_inconsistent_dates(whole_tre, whole_tre.date+1)
         tree_dating.date_labelling(whole_tre)
-        tree_dating.impute_missing_dates(whole_tre, l=0.25)
+        dating_rng = np.random.default_rng(seed=100)
+        tree_dating.impute_missing_dates(whole_tre, l=0.25, rng=dating_rng)
 
         # All nodes now dated - set dists in ete and write out tree.
         tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_%d.tre" % (args.output_folder, args.output_tree_filename, n+1))

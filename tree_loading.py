@@ -10,11 +10,6 @@ import re
 import logging
 logger = logging.getLogger(__name__)
 
-##############################################
-# Get metadata for tree -
-#  - dates from Chronosynth/DateLife
-#  - phylogeny annotations from Open Tree of Life
-#  - taxa labels from Open Tree Taxonomy
 
 def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
                       phylogeny="opentree14.9_tree/annotations.json",
@@ -29,8 +24,8 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
     dates -- JSON dictionary containing dates from phylogenies.
     phylogeny_nodes -- set of OTT ids and ancestor node ids for nodes in the Open Tree of Life that are in an underlying phylogeny,
                        rather than only in taxonomy.
-    taxa -- dictionary; keys are ids from the Open Tree Taxonomy; values are a tuple with the taxonomic level string (e.g. 'species') and a True/False
-            flag specifying whether the taxon is extinct.
+    taxa -- dictionary; keys are integer ids from the Open Tree Taxonomy;
+                        values are a tuple: (taxonomic rank string e.g. 'species', True/False flag specifying whether the taxon is extinct).
     """
 
     # get all dates from phylesystem studies
@@ -56,37 +51,8 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
 
     return dates, phylogeny_nodes, taxa
 
-##############################################
 
-
-##############################################
-# load in whole tree and write out subset of it for analysis
-# (would be better if we can get a ete tree directly rather than going via dendropy)
-
-def write_subtree(supertree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre",
-                 subtree_root_node="Passeriformes ott1041547",
-                 output_filename="my_unresolved_passeriformes.tre"):
-
-    import dendropy
-
-    # get subtree from downloaded full OTL, including taxa labels and OTT uids, and write out in newick form
-    supertree_str = open(supertree_filename,"r").read()
-    supertree = dendropy.Tree.get_from_string(supertree_str, schema='newick')
-
-    supertree_copy = dendropy.Tree(supertree)
-    new_root_node = supertree_copy.find_node_with_label(subtree_root_node)
-
-    new_root_node.parent_node = None
-    subtree = dendropy.Tree(seed_node=new_root_node)
-
-    subtree.write(path=output_filename,schema="newick")
-
-
-##############################################
-# create ete3 tree from my subtree
-
-def build_and_annotate_tree(dates,
-                            phylogeny_nodes,
+def build_and_annotate_tree(phylogeny_nodes,
                             taxa,
                             tree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre",
                             keep_all_dates=False,
@@ -183,44 +149,7 @@ def build_and_annotate_tree(dates,
                 extinct_nodes.add(node)
                 continue
 
-        if not has_branch_lengths:
-            date = None
-            sources = None
-            if ott_name in dates['node_ages']:
-                sources = [source['source_id'] for source in dates['node_ages'][ott_name]]
-                ages = [float(source['age']) for source in dates['node_ages'][ott_name]]
-                if keep_all_dates:
-                    # sources = [source['source_id'] for source in dates['node_ages'][ott_name]]
-                    date = ages
-                else:
-                    ages.sort()
-
-                    num_ages = len(ages)
-                    midpoint = int((num_ages-1)/2)
-                    if num_ages % 2 == 0:
-                        # assume num_ages > 0 or we wouldn't have got here
-                        median_age = (ages[midpoint] + ages[midpoint+1]) / 2
-                    else:
-                        median_age = ages[midpoint]
-
-                    if node.is_leaf():
-                        logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
-
-                    if not node.is_leaf() and median_age < 0.000001:
-                        logger.warning("Warning: computed median age of zero on interior node %s; instead, setting date for this node to None" % node.name)
-                    else:
-                        date = median_age
-            elif node.is_leaf():
-                if keep_all_dates:
-                    date = [0]
-                else:
-                    date = 0
-            node.add_feature("date", date)
-            node.add_feature("imputed_date", False)
-            node.add_feature("imputation_type", 0)
-            if keep_all_dates:
-                node.add_feature("date_sources", sources)
-        else:
+        if has_branch_lengths:
             node.add_feature("date", None)
             node.add_feature("imputed_date", False)
             node.add_feature("imputation_type", 0)

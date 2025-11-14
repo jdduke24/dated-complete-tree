@@ -1,14 +1,59 @@
 import copy
-import gc
 import numpy as np
 
 import logging
 logger = logging.getLogger(__name__)
 
 
+def assign_dates(tre, dates, keep_all_dates=False):
+    """Assign chronosynth dates to nodes in the tree."""
+    for node in tre.traverse():
+        ott_name = node.name.split('_')[-1]
+        date = None
+        sources = None
+
+        if node.is_leaf():
+            if keep_all_dates:
+                date = [0]
+            else:
+                date = 0
+
+        elif ott_name in dates['node_ages']:
+            ages = [float(source['age']) for source in dates['node_ages'][ott_name]]
+            if keep_all_dates:
+                sources = [source['source_id'] for source in dates['node_ages'][ott_name]]
+                date = ages
+            else:
+                ages.sort()
+
+                num_ages = len(ages)
+                midpoint = int((num_ages-1)/2)
+                if num_ages % 2 == 0:
+                    # assume num_ages > 0 or we wouldn't have got here
+                    median_age = (ages[midpoint] + ages[midpoint+1]) / 2
+                else:
+                    median_age = ages[midpoint]
+
+                if node.is_leaf():
+                    logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
+
+                if not node.is_leaf() and median_age < 0.000001:
+                    logger.warning("Warning: computed median age of zero on interior node %s; instead, setting date for this node to None" % node.name)
+                else:
+                    date = median_age
+
+        node.add_feature("date", date)
+        node.add_feature("imputed_date", False)
+        node.add_feature("imputation_type", 0)
+
+        if keep_all_dates:
+            node.add_feature("date_sources", sources)
+
+
 def remove_inconsistent_dates(parent, mrad=None):
     """Recurse in preorder through the tree, removing the date info from any nodes that have dates older
     than a date found on an ancestor. (mrad = most recent ancestor date)
+    Implemented to ape BLADJ; prefer use of label_older_descendants followed by dq_date_removal.
     """
 
     if mrad is None:
@@ -367,9 +412,6 @@ def compute_branch_lengths(tre, round_numbers=False):
             dist = node.up.date - node.date
             if dist < 0:
                 logger.warning("Warning: Negative branch length above %s" % node.name)
-                print(node.up.date)
-                print(node.date)
-                print(len(node.up.children), len(node.children))
 
             if round_numbers:
                 node.dist = round_to_4sf(node.up.date - node.date)

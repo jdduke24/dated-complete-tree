@@ -1,5 +1,5 @@
 import os
-os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dated-complete-tree')
+os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dating_later/dated-complete-tree')
 
 import sys
 import numpy as np
@@ -9,27 +9,24 @@ import tree_labelling
 import tree_fixing
 import tree_dating
 import tree_metrics
-import tree_checks
 
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.ERROR)
 
-#####################################################################################################################
-
 sys.setrecursionlimit(10000)
 
-# Load metadata for tree from Open Tree, Chronosynth and OneZoom
+#####################################################################################################################
+# Load and prune tree
+
+# Load metadata for tree from Open Tree and Chronosynth
 dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
-whole_tre_unmodified = tree_loading.build_and_annotate_tree(dates, phylogeny_nodes, taxa)
+whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa)
 
 tree_fixing.strip_birds(whole_tre_unmodified)
 tree_fixing.strip_turtles(whole_tre_unmodified)
-
-tree_dating.label_older_descendants(whole_tre_unmodified)
-tree_dating.dq_date_removal(whole_tre_unmodified)
 
 rng = np.random.default_rng(seed=1)
 
@@ -48,7 +45,7 @@ tree_fixing.forced_taxa_moves(whole_tre_unmodified)
 whole_tre = whole_tre_unmodified.copy()
 
 #####################################################################################################################
-
+# Fix topology
 
 # First, do labelling for steps 1-3:
 #  - 1-2 are independent of each other; step 3 collects up nodes not labelled in 1-2.
@@ -85,10 +82,16 @@ tree_fixing.fix_all_polytomies(whole_tre, rng)
 whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
 
 #####################################################################################################################
+# Assign and interpolate dates
+
+# Assign dates
+tree_dating.assign_dates(whole_tre, dates)
+
+# Date cleaning to ensure time consistency down the tree
+tree_dating.label_older_descendants(whole_tre)
+tree_dating.dq_date_removal(whole_tre)
 
 # Date imputation
-tree_dating.remove_inconsistent_dates(whole_tre, whole_tre.date+1)
-
 tree_dating.date_labelling(whole_tre)
 dating_rng = np.random.default_rng(seed=100)
 tree_dating.impute_missing_dates(whole_tre, l=0.25, rng=dating_rng)

@@ -131,10 +131,8 @@ def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root, kingdom=
     if root and parent.ph_tx == "PH" and tx_levels[parent.tx_level] == tx_levels["genus"]:
         # if the root node of the whole tree is itself a genus, set this as the current genus root
         genus_root = parent
-        if genus_root.date is None:
-            genus_dict[genus_root] = [[],[genus_root]]
-        else:
-            genus_dict[genus_root] = [[],[]]
+
+        genus_dict[genus_root] = [[],[genus_root]]
 
     species_found = set()
     genera_found = set()
@@ -153,13 +151,8 @@ def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root, kingdom=
         # set up lists for collecting info about this genus/species
         if tx_levels[child.tx_level] == tx_levels["genus"] and child.ph_tx == "PH":
             # dict for step 1
-            if child.date is None:
-                # only include the root in the backbone if the root is not dated
-                genus_dict[child] = [[],[child]]
-            else:
-                # if the root is dated, don't include the root. Moving a dated common ancestor would result in the date no longer
-                # referring to the common ancestor of the intended species.
-                genus_dict[child] = [[],[]]
+            genus_dict[child] = [[],[child]]
+
         elif tx_levels[child.tx_level] == tx_levels["species"] and "%s/%s" % (kingdom, child.genus_name) not in nmp_genus_dict:
             # dict for step 2
             nmp_genus_dict["%s/%s" % (kingdom, child.genus_name)] = [[],[]]
@@ -275,13 +268,8 @@ def populate_tofix_dict(parent, tofix_dict, nmp_genus_dict, kingdom="Other"):
                 used_rank = child.tx_level
 
             if used_rank not in tofix_dict[parent]:
-                if parent.date is None:
-                    # only include the root in the backbone if the root is not dated
-                    tofix_dict[parent][used_rank] = [[], [parent], None]
-                else:
-                    # if the root is dated, don't include the root. Moving a dated common ancestor would result in the date no longer
-                    # referring to the common ancestor of the intended species.
-                    tofix_dict[parent][used_rank] = [[], [], None]
+                tofix_dict[parent][used_rank] = [[], [parent], None]
+
 
             tofix_dict[parent][used_rank][0].append(child)
             child.info = "OTH FIX"

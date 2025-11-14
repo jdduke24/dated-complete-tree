@@ -19,9 +19,6 @@ def create_node(name, forced_insert=False):
         new_node.ph_tx = "FI"
     else:
         new_node.ph_tx = "IN"
-    new_node.date = None
-    new_node.imputed_date = False
-    new_node.imputation_type = 0
     new_node.info = None
 
     return new_node
@@ -94,9 +91,6 @@ def remove_node_and_parents(node, subspecies_only=True):
         if subspecies_only:
             if parent is not None and tx_levels[parent.tx_level] < tx_levels["species"]:
                 remove_node_and_parents(parent, subspecies_only)
-            elif parent is not None and len(parent.children) == 0 and parent.date is None:
-                logger.info("While fixing, set %s to date 0 from None" % (parent.name))
-                parent.date = 0
         else:
             remove_node_and_parents(parent, subspecies_only)
 
@@ -120,7 +114,6 @@ def remove_subspecies(tre, rng):
         if len(node.children) > 0:
             logger.debug("Removing all nodes below species node %s." % (node.name))
             remove_tree_below(node)
-            node.date = 0
 
     # Deal with remaining nodes of rank below species.
     # First get lists of such nodes, in dictionaries where keys are the species names.
@@ -155,8 +148,7 @@ def remove_subspecies(tre, rng):
                 subsp_dict[sp][0].tx_level = "species (promoted)"
                 subsp_dict[sp][0].ancestral_rank = "species (promoted)"
                 subsp_dict[sp][0].desc_rank = "species (promoted)"
-                if subsp_dict[sp][0].date is None:
-                    subsp_dict[sp][0].date = 0
+
                 continue
 
             sp_found = None
@@ -179,8 +171,7 @@ def remove_subspecies(tre, rng):
                     subsp_dict[sp][i].tx_level = "species (promoted)"
                     subsp_dict[sp][i].ancestral_rank = "species (promoted)"
                     subsp_dict[sp][i].desc_rank = "species (promoted)"
-                    if subsp_dict[sp][i].date is None:
-                        subsp_dict[sp][i].date = 0
+
                     sp_found = i
                     break
 
@@ -191,8 +182,6 @@ def remove_subspecies(tre, rng):
                 keep.tx_level = "species (promoted)"
                 keep.ancestral_rank = "species (promoted)"
                 keep.desc_rank = "species (promoted)"
-                if keep.date is None:
-                    keep.date = 0
             else:
                 keep = subsp_dict[sp][i]
 
@@ -226,9 +215,7 @@ def impute_species_into_empty_taxa(tre):
         new_node.add_feature("species_name", species)
         new_node.tx_level = "species (imputed)"
         new_node.ph_tx = "IM"
-        new_node.date = 0
 
-        node.date = None
         node.add_child(new_node)
 
         logger.info("Added representative species %s as a child of %s node %s. %s %s" % (sp_name, node.tx_level, node.name, genus, species))
@@ -239,6 +226,7 @@ def remove_nonspecies_leaves(tre):
     to_remove = []
     for node in tre.traverse():
         if node.is_leaf() and tx_levels[node.tx_level] != tx_levels["species"]:
+            logger.info("Non-species leaf %s removed, rank %s, %s." % (node.name, node.tx_level, node.ph_tx))
             to_remove.append(node)
 
     for node in to_remove:
@@ -323,9 +311,6 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
             # if we created a new node, add it to the backbone
             if new_internal_node:
                 if expand_parent_backbones:
-                    if tofix_dict[key][2] is None:
-                        print("key", key)
-                        print(tofix_dict[key])
                     for root in tofix_dict[key][2]:
                         for level in tx_levels:
                             if tx_levels[level] < tx_levels[child.ancestral_rank]:
@@ -340,9 +325,6 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
 
             # add the node we moved to the backbone
             if expand_parent_backbones:
-                if tofix_dict[key][2] is None:
-                    print("key", key)
-                    print(tofix_dict[key])
                 for root in tofix_dict[key][2]:
                     for level in tx_levels:
                         if tx_levels[level] < tx_levels[child.ancestral_rank]:
@@ -476,9 +458,6 @@ def strip_birds(tre, ejm_birds_filename="config/OTT_crosswalk_2024.csv"):
         if tx_levels[node.tx_level] == tx_levels["species"] and len(node.children) == 0:
             remove_node_and_parents(node, subspecies_only=False)
 
-    for leaf in aves_root.get_leaves():
-        leaf.date = 0
-
 
 def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
     import csv
@@ -516,9 +495,6 @@ def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
     for node in to_remove:
         if tx_levels[node.tx_level] == tx_levels["species"] and len(node.children) == 0:
             remove_node_and_parents(node, subspecies_only=False)
-
-    for leaf in turtles_root.get_leaves():
-        leaf.date = 0
 
 
 def fix_taxonomy_ordering(tre, filename="config/taxonomy_fixes.csv"):

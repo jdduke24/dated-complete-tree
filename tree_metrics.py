@@ -70,22 +70,24 @@ def add_ed_scores(dated_tre, existing_scores):
 def write_ed_scores(filename, scores):
     logger.info("Writing ED score distributions.")
     fout = open(filename, "w")
-    fout.write("leaf_name\tdomain\tkingdom\tphylum\tclass\torder\tfamily\tmean\tmin\t25pct\tmedian\t75pct\tmax\tN\n")
+    fout.write("leaf_name\tdomain\tkingdom\tphylum\tclass\torder\tfamily\tmean\tmin\t2.5pct\t25pct\tmedian\t75pct\t97.5pct\tmax\tN\n")
     for key in scores:
-        fout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%d\n" % (key[0],
-                                                                                 key[1],
-                                                                                 key[2],
-                                                                                 key[3],
-                                                                                 key[4],
-                                                                                 key[5],
-                                                                                 key[6],
-                                                                                 np.mean(scores[key]),
-                                                                                 np.min(scores[key]),
-                                                                                 np.percentile(scores[key],25),
-                                                                                 np.percentile(scores[key],50),
-                                                                                 np.percentile(scores[key],75),
-                                                                                 np.max(scores[key]),
-                                                                                 len(scores[key])))
+        fout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\n" % (key[0],
+                                                                                         key[1],
+                                                                                         key[2],
+                                                                                         key[3],
+                                                                                         key[4],
+                                                                                         key[5],
+                                                                                         key[6],
+                                                                                         np.mean(scores[key]),
+                                                                                         np.min(scores[key]),
+                                                                                         np.percentile(scores[key],2.5),
+                                                                                         np.percentile(scores[key],25),
+                                                                                         np.percentile(scores[key],50),
+                                                                                         np.percentile(scores[key],75),
+                                                                                         np.percentile(scores[key],97.5),
+                                                                                         np.max(scores[key]),
+                                                                                         len(scores[key])))
     fout.close()
 
 
@@ -118,8 +120,8 @@ def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
 
         return ls_str
 
-    fout = open("%s_phyla.txt" % filename, "w")
-    fout.write("Clade\tspp.\tMean\tMin\t2.5pct\t16pct\t25pct\t50pct\t75pct\t84pct\t97.5pct\tMax\n")
+    fout = open("%s_pd_for_clades.txt" % filename, "w")
+    fout.write("Clade\tspp.\tMean\tMin\t2.5pct\t16pct\t25pct\tmedian\t75pct\t84pct\t97.5pct\tMax\n")
     for clade in pd_dict:
         if len(spp_dict[clade]) > 0:
             fout.write("%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n" % (clade,
