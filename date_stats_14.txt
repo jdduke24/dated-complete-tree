@@ -1,0 +1,54 @@
+                                      cellular_organisms_ott93302	no rank	76953	0.033534	2294775	334	0.068307
+Eukaryota_ott304358	domain	76915	0.034715	2215634	333	0.069304
+ Metazoa_ott691846	kingdom	41196	0.027927	1475149	285	0.057222
+     Chordata_ott125642	phylum	29735	0.358677	82903	225	0.473767
+         Actinopteri_ott285821	class	11182	0.298928	37408	31	0.369418
+               Squamata_ott35888	order	4113	0.366578	11221	16	0.408583
+         Aves_ott81461	class	8762	0.801647	10931	129	0.934495
+         Amphibia_ott544595	class	1937	0.196970	9835	7	0.572729
+         Mammalia_ott244265	class	2993	0.375863	7964	49	0.501475
+         Chondrichthyes_ott278108	class	536	0.324455	1653	6	0.390620
+               Testudines_ott639666	order	171	0.526154	326	5	0.967742
+     Arthropoda_ott632179	phylum	10532	0.008901	1183222	57	0.033132
+                                      Pancrustacea_ott985906	no rank	10287	0.009628	1068467	54	0.035935
+         Insecta_ott1062253	class	9615	0.009764	984720	48	0.036045
+               Coleoptera_ott865243	order	658	0.002294	286855	10	0.028474
+               Lepidoptera_ott965954	order	2208	0.012094	182577	9	0.035026
+               Diptera_ott661378	order	237	0.001420	166902	4	0.021854
+               Hymenoptera_ott753726	order	5832	0.040960	142384	16	0.068491
+               Hemiptera_ott603650	order	255	0.002459	103698	6	0.023173
+               Orthoptera_ott1095594	order	52	0.001846	28172	7	0.017890
+               Trichoptera_ott457402	order	83	0.005932	13993	4	0.035162
+               Odonata_ott133665	order	104	0.016474	6314	5	0.186188
+         Malacostraca_ott212701	class	589	0.012071	48796	6	0.032308
+          Copepoda_ott461528	subclass	0	0.000000	15764	0	0.039839
+         Branchiopoda_ott632175	class	25	0.010134	2468	3	0.018642
+      Chelicerata_ott1041457	subphylum	209	0.002167	96446	4	0.008051
+      Myriapoda_ott177526	subphylum	34	0.001857	18309	2	0.001639
+     Mollusca_ott802117	phylum	213	0.002419	88048	13	0.011403
+     Platyhelminthes_ott555379	phylum	20	0.000793	25209	1	0.009897
+     Annelida_ott941620	phylum	13	0.000566	22978	10	0.020934
+     Nematoda_ott395057	phylum	95	0.004798	19802	3	0.019847
+     Cnidaria_ott641033	phylum	190	0.012310	15435	11	0.141210
+     Porifera_ott67819	phylum	38	0.003750	10134	3	0.077614
+                                      Echinodermata_ott451020	no rank	47	0.005394	8715	11	0.031098
+     Bryozoa_ott442934	phylum	287	0.039326	7299	1	0.050010
+     Tardigrada_ott111438	phylum	3	0.002038	1473	1	0.006452
+ Chloroplastida_ott361838	kingdom	35203	0.082495	426729	48	0.150536
+     Tracheophyta_ott10210	phylum	34814	0.089207	390260	46	0.160775
+         Magnoliopsida_ott99252	class	30700	0.082207	373449	41	0.154818
+         Polypodiopsida_ott166292	class	3619	0.273380	13239	6	0.297013
+     Bryophyta_ott246594	phylum	204	0.012017	16977	3	0.052985
+     Marchantiophyta_ott56601	phylum	151	0.015752	9587	4	0.034006
+     Chlorophyta_ott979501	phylum	23	0.003349	6869	1	0.023877
+     Rhodophyta_ott878953	phylum	8	0.000863	9274	1	0.015906
+ Fungi_ott352914	kingdom	396	0.001602	247150	4	0.014416
+     Ascomycota_ott439373	phylum	187	0.001145	163301	3	0.012269
+     Basidiomycota_ott634628	phylum	201	0.002563	78410	2	0.017983
+     Microsporidia_ott16113	phylum	0	0.000000	1466	0	0.007847
+  SAR_ott5246039	subkingdom	76	0.001487	51095	2	0.015853
+   Stramenopiles_ott266745	infrakingdom	46	0.002290	20088	2	0.025115
+   Alveolata_ott266751	infrakingdom	18	0.001212	14857	2	0.017265
+   Rhizaria_ott6929	infrakingdom	10	0.000619	16150	2	0.002972
+Archaea_ott996421	domain	6	0.003984	1507	1	0.088284
+Bacteria_ott844192	domain	31	0.000399	77634	2	0.039455
