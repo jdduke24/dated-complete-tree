@@ -135,7 +135,7 @@ def remove_subspecies(tre, rng):
     # Prune away anything below species
     species_nodes = []
     species_names = set()
-    for node in tre.traverse():
+    for node in tre.traverse(strategy="preorder"):
         if tx_levels[node.props["tx_level"]] == tx_levels["species"]:
             species_nodes.append(node)
             species_names.add(node.props["species_name"])
@@ -148,7 +148,7 @@ def remove_subspecies(tre, rng):
     # Deal with remaining nodes of rank below species.
     # First get lists of such nodes, in dictionaries where keys are the species names.
     subsp_dict = {}
-    for node in tre.traverse():
+    for node in tre.traverse(strategy="preorder"):
         if (node.props["tx_level"] == "no rank - terminal" or
                 node.props["tx_level"] == "subspecies" or
                 node.props["tx_level"] == "varietas" or
@@ -228,7 +228,7 @@ def remove_subspecies(tre, rng):
 def impute_species_into_empty_taxa(tre):
     """Finds empty higher-than-species taxa, and imputes a representative random species into them."""
     new_parents = []
-    for node in tre.traverse():
+    for node in tre.traverse(strategy="preorder"):
         if node.is_leaf and tx_levels[node.props["tx_level"]] != tx_levels["species"]:
             new_parents.append(node)
 
@@ -254,7 +254,7 @@ def impute_species_into_empty_taxa(tre):
 def remove_nonspecies_leaves(tre):
     """Remove any leaf nodes that are of rank above species, e.g. empty genera."""
     to_remove = []
-    for node in tre.traverse():
+    for node in tre.traverse(strategy="preorder"):
         if node.is_leaf and tx_levels[node.props["tx_level"]] != tx_levels["species"]:
             logger.info("Non-species leaf %s removed, rank %s, %s." % (node.name, node.props["tx_level"], node.props["ph_tx"]))
             to_remove.append(node)
@@ -419,7 +419,7 @@ def fix_polytomy(parent, rng):
 def fix_all_polytomies(tre, rng):
     """Fix at random all polytomies in the tree."""
     polytomies = []
-    for node in tre.traverse(strategy='preorder'):
+    for node in tre.traverse(strategy="preorder"):
         if len(node.children) > 2:
             polytomies.append(node)
 
@@ -427,7 +427,7 @@ def fix_all_polytomies(tre, rng):
         fix_polytomy(node, rng)
 
 
-def delete_one_child_nodes(tre, maintain_branch_lengths=False):
+def delete_one_child_nodes(tre, maintain_branch_lengths=True):
     """Strip out nodes with only one child. If maintain_branch_lengths=True, add the branch length above
     the deleted node to the branch below it.
     """
@@ -442,7 +442,7 @@ def delete_one_child_nodes(tre, maintain_branch_lengths=False):
             tre = tre.children[0]
             tre.detach()
         else:
-            if maintain_branch_lengths:
+            if maintain_branch_lengths and node.children[0].dist and node.dist:
                 node.children[0].dist += node.dist
             node.up.add_child(node.children[0].detach())
             node.detach()
@@ -471,7 +471,7 @@ def strip_birds(tre, ejm_birds_filename="config/OTT_crosswalk_2024.csv"):
 
     to_remove = []
     if aves_root is not None:
-        for node in aves_root.traverse():
+        for node in aves_root.traverse(strategy="preorder"):
             if tx_levels[node.props["tx_level"]] == tx_levels["species"] or tx_levels[node.props["tx_level"]] == tx_levels["subspecies"]:
                 nm_parts = node.name.split('_')
                 ottid = int(nm_parts[-1][3:])
@@ -509,7 +509,7 @@ def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
 
     to_remove = []
     if turtles_root is not None:
-        for node in turtles_root.traverse():
+        for node in turtles_root.traverse(strategy="preorder"):
             if tx_levels[node.props["tx_level"]] == tx_levels["species"] or tx_levels[node.props["tx_level"]] == tx_levels["subspecies"]:
                 nm_parts = node.name.split('_')
                 ottid = int(nm_parts[-1][3:])

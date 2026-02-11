@@ -42,8 +42,10 @@ logger = logging.getLogger(__name__)
 
 
 def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
-                      phylogeny="opentree14.9_tree/annotations.json",
-                      taxonomy="ott3.6/taxonomy.tsv"):
+                      phylogeny="opentree16.1_tree/annotations.json",
+                      taxonomy="ott3.7.3/taxonomy.tsv",
+                      force_dates_refresh=False,
+                      force_no_dates_refresh=False):
     """Load metadata.
     Takes:
     date_cache -- string specifying path for a JSON file which will be used by Chronosynth to cache date information from phylogenies.
@@ -59,7 +61,20 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
     """
 
     # get all dates from phylesystem studies
-    dates = cg.build_synth_node_source_ages(cache_file_path=date_cache)
+    dates = cg.build_synth_node_source_ages(cache_file_path=date_cache, force_reload=force_dates_refresh, force_no_reload=force_no_dates_refresh)
+    sources_to_delete = set(["ot_1250@tree2"])
+    deletions = []
+    for ott_name in dates["node_ages"]:
+        for i, source in enumerate(dates["node_ages"][ott_name]):
+            if source["source_id"] in sources_to_delete:
+                deletions.append((ott_name, i))
+
+    deletions.sort(reverse=True)
+
+    for ott_name, i in deletions:
+        del dates["node_ages"][ott_name][i]
+        if len(dates["node_ages"][ott_name]) == 0:
+            del dates["node_ages"][ott_name]
 
     # get phylogeny annotations - if a node is not here, it is only from taxonomy
     annotations = json.load(open(phylogeny,"r"))
@@ -84,7 +99,7 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
 
 def build_and_annotate_tree(phylogeny_nodes,
                             taxa,
-                            tree_filename="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre",
+                            tree_filename="opentree16.1_tree/labelled_supertree/labelled_supertree_ottnames.tre",
                             keep_all_dates=False,
                             ignore_extinct=True,
                             has_branch_lengths=False):
@@ -117,7 +132,7 @@ def build_and_annotate_tree(phylogeny_nodes,
 
     tre = ete4.Tree(tree_string, parser=1)
 
-    if has_branch_lengths:
+    if has_branch_lengths and not tre.name:
         tre.name = "mrca_root"
 
     logger.info("ETE3 tree loaded. Beginning annotation")
@@ -131,6 +146,10 @@ def build_and_annotate_tree(phylogeny_nodes,
         node.name = node.name.strip("'")
         node.name = node.name.strip("_")
         node.name = node.name.replace(',', "")   # remove commas in node names
+        node.name = node.name.replace('(', "")   # remove brackets in node names
+        node.name = node.name.replace(')', "")   # remove brackets in node names
+        node.name = node.name.replace('[', "")   # remove brackets in node names
+        node.name = node.name.replace(']', "")   # remove brackets in node names
 
         if node.name[:4] == "mrca":
             tx_level = "mrca"
@@ -148,25 +167,30 @@ def build_and_annotate_tree(phylogeny_nodes,
                 ott_name = node.name.split('_')[-1]
             ott_uid = int(ott_name[3:])
 
-            if ignore_extinct:
-                if taxa[ott_uid][1]:
-                    # extinct or extinct_inherited
-                    extinct_nodes.add(node)
-                    continue
+            if ott_uid == 0:
+                # must be reading in a tree with my imputed ott0000 species in it
+                tx_level = "species"
             else:
-                if taxa[ott_uid][1] or node.name[:1] == 'x_':
-                    node.add_prop("extinct", True)
+
+                if ignore_extinct:
+                    if taxa[ott_uid][1]:
+                        # extinct or extinct_inherited
+                        extinct_nodes.add(node)
+                        continue
                 else:
-                    node.add_prop("extinct", False)
+                    if taxa[ott_uid][1] or node.name[:1] == 'x_':
+                        node.add_prop("extinct", True)
+                    else:
+                        node.add_prop("extinct", False)
 
-            tx_level = taxa[ott_uid][0]
+                tx_level = taxa[ott_uid][0]
 
-            if re.search(r".*_f\._.*", node.name) and tx_level == "no rank - terminal":
-                tx_level = "forma"
-                logger.info("Based on name, %s given rank 'forma' rather than 'no rank - terminal'." % node.name)
-            elif re.search(r".*_var\._.*", node.name) and tx_level == "no rank - terminal":
-                tx_level = "variety"
-                logger.info("Based on name, %s given rank 'variety' rather than 'no rank - terminal'." % node.name)
+                if re.search(r".*_f\._.*", node.name) and tx_level == "no rank - terminal":
+                    tx_level = "forma"
+                    logger.info("Based on name, %s given rank 'forma' rather than 'no rank - terminal'." % node.name)
+                elif re.search(r".*_var\._.*", node.name) and tx_level == "no rank - terminal":
+                    tx_level = "variety"
+                    logger.info("Based on name, %s given rank 'variety' rather than 'no rank - terminal'." % node.name)
 
         node.add_prop("tx_level", tx_level)
 

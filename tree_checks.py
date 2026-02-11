@@ -62,10 +62,10 @@ def check_bifurcating(tre, filename=None):
     polytomy_nodes = []
     for node in tre.traverse():
         if len(node.children) > 2:
-            polytomy_nodes.append((node.name, node.tx_level, len(node.children)))
+            polytomy_nodes.append((node.name, node.props["tx_level"], len(node.children)))
 
         if len(node.children) == 1:
-            one_child_nodes.append((node.name, node.tx_level, node.children[0].tx_level))
+            one_child_nodes.append((node.name, node.props["tx_level"], node.children[0].props["tx_level"]))
 
     for name, rank, desc_rank in one_child_nodes:
         if filename:
@@ -91,7 +91,7 @@ def count_subspecies(tre, return_subsp=False):
     count = 0
     subsp = set()
     for node in tre.traverse():
-        if tx_levels[node.tx_level] > 0 and tx_levels[node.tx_level] < 3:
+        if tx_levels[node.props["tx_level"]] > 0 and tx_levels[node.props["tx_level"]] < 3:
             count += 1
             if return_subsp:
                 subsp.add(node)
@@ -104,22 +104,22 @@ def count_subspecies(tre, return_subsp=False):
 
 def check_taxonomy_order(parent, file=None, current_rank=None):
     if current_rank is None:
-        current_rank = parent.tx_level
+        current_rank = parent.props["tx_level"]
 
-    if tx_levels[parent.tx_level] > 0 or tx_levels[current_rank] < 0:
-        current_rank = parent.tx_level
+    if tx_levels[parent.props["tx_level"]] > 0 or tx_levels[current_rank] < 0:
+        current_rank = parent.props["tx_level"]
 
     errors = 0
     for child in parent.children:
-        if tx_levels[current_rank] > 0 and tx_levels[child.tx_level] > 0:
-            if tx_levels[child.tx_level] > tx_levels[current_rank]:
+        if tx_levels[current_rank] > 0 and tx_levels[child.props["tx_level"]] > 0:
+            if tx_levels[child.props["tx_level"]] > tx_levels[current_rank]:
                 ancestor = child.up
-                while(tx_levels[ancestor.tx_level] < 0 or tx_levels[ancestor.tx_level] > tx_levels[child.tx_level]):
+                while(tx_levels[ancestor.props["tx_level"]] < 0 or tx_levels[ancestor.props["tx_level"]] > tx_levels[child.props["tx_level"]]):
                     ancestor = ancestor.up
                 if file:
-                    file.write("Error: ancestor %s has rank %s but descendant %s has rank %s\n" % (ancestor.name, current_rank, child.name, child.tx_level))
+                    file.write("Error: ancestor %s has rank %s but descendant %s has rank %s\n" % (ancestor.name, current_rank, child.name, child.props["tx_level"]))
                 else:
-                    print("Error: ancestor %s has rank %s but descendant %s has rank %s" % (ancestor.name, current_rank, child.name, child.tx_level))
+                    print("Error: ancestor %s has rank %s but descendant %s has rank %s" % (ancestor.name, current_rank, child.name, child.props["tx_level"]))
                 errors += 1
         check_taxonomy_order(child, file, current_rank)
 
@@ -128,47 +128,53 @@ def find_phy_under_tax(tre, file):
     for node in tre.traverse(strategy="preorder"):
         if node.up:
             if node.up.ph_tx == "TX" and node.ph_tx == "PH":
-                file.write("PH node %s, %s sits under TX node %s, %s\n" % (node.name, node.tx_level, node.up.name, node.up.tx_level))
+                file.write("PH node %s, %s sits under TX node %s, %s\n" % (node.name, node.props["tx_level"], node.up.name, node.up.props["tx_level"]))
 
 
 def get_tx_levels(tre):
     tx_levels = set()
     for node in tre.traverse(strategy="preorder"):
-        tx_levels.add(node.tx_level)
+        tx_levels.add(node.props["tx_level"])
     return tx_levels
 
 
 def check_zero_dates(tre):
     for node in tre.traverse():
-        if node.is_leaf() and node.date is None:
+        if node.is_leaf and node.props["date"] is None:
             print(node.name, "is leaf with date None")
-        if node.is_leaf() and node.date is not None and node.date > 0:
+        if node.is_leaf and node.props["date"] is not None and node.props["date"] > 0:
             print(node.name, "is leaf with date > 0")
-        if not node.is_leaf() and node.date == 0:
+        if not node.is_leaf and node.props["date"] == 0:
             print(node.name, "is interior node with date 0")
 
 
 # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-def check_inconsistent_dates(parent, fout, mrad=None, rounded=True):
+def check_inconsistent_dates(parent, fout=None, mrad=None, rounded=True):
     if mrad is None:
-        if not parent.date:
+        if not parent.props["date"]:
             raise Exception("Require root date.")
-        next_mrad = parent.date
+        next_mrad = parent.props["date"]
 
     else:
         next_mrad = mrad
         # if we have a date, check it against the most recent ancestor
-        if parent.date:
+        if parent.props["date"]:
             if rounded:
-                if round(parent.date,6) >= round(mrad,6):
-                    fout.write("Found inconsistent date at %s: date of %f is later than %f\n" % (parent.name, parent.date, mrad))
+                if round(parent.props["date"],6) >= round(mrad,6):
+                    if fout:
+                        fout.write("Found inconsistent date at %s: date of %f is later than %f\n" % (parent.name, parent.props["date"], mrad))
+                    else:
+                        print("Found inconsistent date at %s: date of %f is later than %f" % (parent.name, parent.props["date"], mrad))
                 else:
-                    next_mrad = parent.date
+                    next_mrad = parent.props["date"]
             else:
-                if parent.date >= mrad:
-                    fout.write("Found inconsistent date at %s: date of %f is later than %f\n" % (parent.name, parent.date, mrad))
+                if parent.props["date"] >= mrad:
+                    if fout:
+                        fout.write("Found inconsistent date at %s: date of %f is later than %f\n" % (parent.name, parent.props["date"], mrad))
+                    else:
+                        print("Found inconsistent date at %s: date of %f is later than %f" % (parent.name, parent.props["date"], mrad))
                 else:
-                    next_mrad = parent.date
+                    next_mrad = parent.props["date"]
 
     for child in parent.children:
         check_inconsistent_dates(child, fout, next_mrad, rounded)

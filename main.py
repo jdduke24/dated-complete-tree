@@ -32,6 +32,7 @@ import os
 import sys
 import gc
 import numpy as np
+import datetime
 
 import tree_loading
 import tree_labelling
@@ -52,6 +53,7 @@ def generate_trees(args):
     sys.setrecursionlimit(10000)
 
     rng = np.random.default_rng(seed=1)
+    date_source_rng = np.random.default_rng(seed=1)
 
     #####################################################################################################################
     # Load and prune tree
@@ -78,23 +80,34 @@ def generate_trees(args):
     tree_fixing.forced_taxa_moves(whole_tre_unmodified)
 
     if args.pd_clades:
-        pd_clades = [cld.strip() for cld in list(open(args.pd_clades))]
-        pd_dict = {}
-        dates_dict = {}
-        spp_dict = {}
-        for clade in pd_clades:
-            pd_dict[clade] = []
-            dates_dict[clade] = []
-            spp_dict[clade] = []
+        topo_pd_clades = [cld.strip() for cld in list(open(args.pd_clades))]
+        topo_pd_dict = {}
+        topo_dates_dict = {}
+        topo_spp_dict = {}
+        for clade in topo_pd_clades:
+            topo_pd_dict[clade] = []
+            topo_dates_dict[clade] = []
+            topo_spp_dict[clade] = []
+
+        if args.num_date_samples > 0:
+            both_pd_clades = [cld.strip() for cld in list(open(args.pd_clades))]
+            both_pd_dict = {}
+            both_dates_dict = {}
+            both_spp_dict = {}
+            for clade in both_pd_clades:
+                both_pd_dict[clade] = []
+                both_dates_dict[clade] = []
+                both_spp_dict[clade] = []
 
     if args.compute_ed:
-        ed_scores = {}
+        topo_ed_scores = {}
+        if args.num_date_samples > 0:
+            both_ed_scores = {}
 
-    if args.compute_rf:
-        args.maintain_species_set = True
+    itr_start = datetime.datetime.now()
 
     for n in range(args.num_trees):
-        print("Tree number", n+1)
+        print("Tree number", n+1, "/ projected end time:", itr_start + args.num_trees*(datetime.datetime.now() - itr_start)/n if n > 0 else "first iteration, no estimate yet")
 
         # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
         # reloading everything
@@ -138,7 +151,7 @@ def generate_trees(args):
         whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
 
         #####################################################################################################################
-        # Assign and interpolate dates
+        # Assign and interpolate median dates
 
         # Assign dates
         tree_dating.assign_dates(whole_tre, dates)
@@ -153,14 +166,44 @@ def generate_trees(args):
         tree_dating.impute_missing_dates(whole_tre, l=0.25, rng=dating_rng)
 
         # All nodes now dated - set dists in ete and write out tree.
-        tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_%d.tre" % (args.output_folder, args.output_tree_filename, n+1))
+        tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_topo_sample_%d.tre" % (args.output_folder, args.output_tree_filename, n+1))
 
         if args.compute_ed:
-            tree_metrics.add_ed_scores(whole_tre, ed_scores)
+            tree_metrics.compute_ed_scores(whole_tre, topo_ed_scores)
 
         if args.pd_clades:
             tree_metrics.compute_pd(whole_tre)
-            tree_metrics.save_pd_for_clades(whole_tre, pd_clades, pd_dict, dates_dict, spp_dict)
+            tree_metrics.save_pd_for_clades(whole_tre, topo_pd_clades, topo_pd_dict, topo_dates_dict, topo_spp_dict)
+
+        # Now do date sampling, if desired
+        for s in range(args.num_date_samples):
+            print("  Tree number", n+1, "; Date sample", s+1)
+            for node in whole_tre.traverse(strategy="preorder"):
+                # reset all dates
+                node.props["date"] = None
+                node.props["imputed_date"] = False
+                node.props["imputation_type"] = 0
+
+            # Assign dates
+            tree_dating.assign_dates(whole_tre, dates, sample_dates=True, rng=date_source_rng)
+
+            # Date cleaning to ensure time consistency down the tree
+            tree_dating.label_older_descendants(whole_tre)
+            tree_dating.dq_date_removal(whole_tre)
+
+            # Date imputation
+            tree_dating.date_labelling(whole_tre)
+            tree_dating.impute_missing_dates(whole_tre, l=0.25)
+
+            # All nodes now dated - set dists in ete and write out tree.
+            tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_both_sample_%d.tre" % (args.output_folder, args.output_tree_filename, n*args.num_date_samples+s+1))
+
+            if args.compute_ed:
+                tree_metrics.compute_ed_scores(whole_tre, both_ed_scores)
+
+            if args.pd_clades:
+                tree_metrics.compute_pd(whole_tre)
+                tree_metrics.save_pd_for_clades(whole_tre, both_pd_clades, both_pd_dict, both_dates_dict, both_spp_dict)
 
         del whole_tre
         gc.collect()
@@ -168,13 +211,16 @@ def generate_trees(args):
 
     if args.compute_ed:
         print("Writing out ED score distributions for all species (takes ~5 minutes)")
-        tree_metrics.write_ed_scores("%s/%s_ed_scores.txt" % (args.output_folder, args.output_tree_filename), ed_scores)
+        tree_metrics.write_ed_scores("%s/%s_topo_ed_scores.txt" % (args.output_folder, args.output_tree_filename), topo_ed_scores)
+
+        if args.num_date_samples > 0:
+            tree_metrics.write_ed_scores("%s/%s_both_ed_scores.txt" % (args.output_folder, args.output_tree_filename), both_ed_scores)
 
     if args.pd_clades:
-        tree_metrics.write_pd_dists("%s/%s" % (args.output_folder, args.output_tree_filename), pd_dict, dates_dict, spp_dict)
+        tree_metrics.write_pd_dists("%s/%s_topo" % (args.output_folder, args.output_tree_filename), topo_pd_dict, topo_dates_dict, topo_spp_dict)
 
-    if args.compute_rf:
-        tree_metrics.compute_rf_distances(args.output_folder, args.output_tree_filename, args.num_trees)
+        if args.num_date_samples > 0:
+            tree_metrics.write_pd_dists("%s/%s_both" % (args.output_folder, args.output_tree_filename), both_pd_dict, both_dates_dict, both_spp_dict)
 
 
 def main():
@@ -190,6 +236,11 @@ def main():
                         type=int,
                         default=1)
 
+    parser.add_argument("--num_date_samples",
+                        help="How many times to sample a set of dates for each tree (in addition to the tree using median dates)",
+                        type=int,
+                        default=0)
+
     parser.add_argument("--output_folder",
                         help="Path of folder where output trees will be written in Newick format",
                         default="output")
@@ -200,7 +251,7 @@ def main():
 
     parser.add_argument("--supertree",
                         help="Path of the labelled_supertree_ottnames.tre file from the Open Tree of Life",
-                        default="opentree14.9_tree/labelled_supertree/labelled_supertree_ottnames.tre")
+                        default="opentree16.1_tree/labelled_supertree/labelled_supertree_ottnames.tre")
 
     parser.add_argument("--date_cache",
                         help="Path of the date cache generated by Chronosynth",
@@ -208,26 +259,18 @@ def main():
 
     parser.add_argument("--phylogeny",
                         help="Path of the annotations.json file from the Open Tree of Life",
-                        default="opentree14.9_tree/annotations.json")
+                        default="opentree16.1_tree/annotations.json")
 
     parser.add_argument("--taxonomy",
                         help="Path of the taxonomy.tsv file from the Open Tree Taxonomy",
-                        default="ott3.6/taxonomy.tsv")
+                        default="ott3.7.3/taxonomy.tsv")
 
     parser.add_argument("--pd_clades",
                         help="Path of a text file containing a list of node names (one on each line) for which to output PD estimates.",
                         default=None)
 
-    parser.add_argument("--maintain_species_set",
-                        help="Flag: whether to keep the set of species the same across all trees, enabling computation of distance metrics between trees. Default: False.",
-                        action="store_true")
-
     parser.add_argument("--compute_ed",
                         help="Flag: whether to compute a distribution of ED scores. A csv file summarising the scores will be placed in the output folder. Default: False.",
-                        action="store_true")
-
-    parser.add_argument("--compute_rf",
-                        help="Flag: whether to compute Robinson-Foulds distances between all pairs of trees. A csv file of distances be placed in the output folder. Default: False.",
                         action="store_true")
 
     args = parser.parse_args()

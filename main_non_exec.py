@@ -42,7 +42,7 @@ import tree_metrics
 
 import logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.ERROR)
+logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.DEBUG)
 
 sys.setrecursionlimit(10000)
 
@@ -54,6 +54,9 @@ dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
 whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa)
+
+for node in whole_tre_unmodified.search_nodes(name="Homo_ott770309"):
+    print(node.name, node.children)
 
 tree_fixing.strip_birds(whole_tre_unmodified)
 tree_fixing.strip_turtles(whole_tre_unmodified)
@@ -69,6 +72,12 @@ tree_labelling.add_anc_ranks(whole_tre_unmodified)
 tree_labelling.add_desc_ranks(whole_tre_unmodified)
 
 tree_fixing.forced_taxa_moves(whole_tre_unmodified)
+
+for node in whole_tre_unmodified.search_nodes(name="Branchiopoda_ott632175"):
+    nd = node
+
+import tree_plotting
+tree_plotting.plot_labels(nd, "branchiopoda.svg")
 
 # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
 # reloading everything
@@ -126,5 +135,18 @@ tree_dating.date_labelling(whole_tre)
 dating_rng = np.random.default_rng(seed=100)
 tree_dating.impute_missing_dates(whole_tre, l=0.25, rng=dating_rng)
 
+for node in whole_tre.search_nodes(name="Branchiopoda_ott632175"):
+    nd = node
+
+
+
+tree_plotting.plot_labels(nd, "branchiopoda_dated.svg")
+
 tree_dating.compute_branch_lengths(whole_tre)
 tree_metrics.compute_pd(whole_tre)
+
+from taxonomy_utils import tx_levels
+
+for node in nd.traverse():
+    if tx_levels[node.props["tx_level"]] > tx_levels["genus"]:
+        print(node.name, node.props["tx_level"], node.props["date"], node.props["imputed_date"], node.props["pd"])

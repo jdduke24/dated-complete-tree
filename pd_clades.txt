@@ -1,3 +1,4 @@
+cellular_organisms_ott93302
 Eukaryota_ott304358
 Metazoa_ott691846
 Chordata_ott125642
@@ -32,7 +33,6 @@ Cnidaria_ott641033
 Porifera_ott67819
 Echinodermata_ott451020
 Bryozoa_ott442934
-Rotifera_ott471706
 Tardigrada_ott111438
 Chloroplastida_ott361838
 Tracheophyta_ott10210

@@ -35,49 +35,86 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def assign_dates(tre, dates, keep_all_dates=False):
-    """Assign chronosynth dates to nodes in the tree."""
-    for node in tre.traverse():
+def assign_dates(tre, dates, sample_dates=False, rng=None, num_sources=False, use_youngest_dates=False, use_oldest_dates=False):
+    """Assign chronosynth dates to nodes in the tree.
+    If sample_dates=True, first create a dictionary of all date sources whoe keys are the sources and values their (random) priority ordering.
+    For each dated node, assign the date of the highest-priority source."""
+
+    # remove any dates of 0.0
+    zero_dates = []
+    for ott_name in dates["node_ages"]:
+        for i, source in enumerate(dates["node_ages"][ott_name]):
+            if float(source["age"]) < 0.000001:
+                zero_dates.append((ott_name, i))
+
+    for ott_name, i in zero_dates:
+        del dates["node_ages"][ott_name][i]
+        if len(dates["node_ages"][ott_name]) == 0:
+            del dates["node_ages"][ott_name]
+
+    # randomly prioritise all date sources
+    if sample_dates:
+        all_sources = set()
+        for ott_name in dates["node_ages"]:
+            for source in dates["node_ages"][ott_name]:
+                all_sources.add(source["source_id"])
+
+        source_priorities = list(all_sources)
+        rng.shuffle(source_priorities)
+
+        priority_dict = {}
+        for i, sourceid in enumerate(source_priorities):
+            priority_dict[sourceid] = i
+
+    # date_sources = {}
+
+    # assign dates to any node with at least one source
+    for node in tre.traverse(strategy="preorder"):
         ott_name = node.name.split('_')[-1]
         date = None
         sources = None
 
         if node.is_leaf:
-            if keep_all_dates:
-                date = [0]
+            # leaf nodes are assumed to be extant; assign date of zero
+            date = 0
+        elif ott_name in dates["node_ages"]:
+            ages = [float(source["age"]) for source in dates["node_ages"][ott_name]]
+
+            if num_sources:
+                node.add_prop("date_sourceids", set([source["source_id"] for source in dates["node_ages"][ott_name]]))
+
+            # date_sources[node] = copy.copy(ages)
+
+            if sample_dates:
+                # sample dates based on source prioritisation
+                sources = [source["source_id"] for source in dates["node_ages"][ott_name]]
+                source_choice = None
+                for i, sourceid in enumerate(sources):
+                    if source_choice is None:
+                        source_choice = (i, sourceid)
+                        logger.debug("Initial source choice for %s is %s, priority %d." % (ott_name, sourceid, priority_dict[sourceid]))
+                    else:
+                        if priority_dict[sourceid] < priority_dict[source_choice[1]]:
+                            logger.debug("Superseding source choice for %s with %s, priority %d vs %d." % (ott_name, sourceid, priority_dict[sourceid], priority_dict[source_choice[1]]))
+                            source_choice = (i, sourceid)
+
+                date = round(ages[source_choice[0]], 5)
+
+            elif use_youngest_dates:
+                date = round(min(ages),5)
+            elif use_oldest_dates:
+                date = round(max(ages),5)
             else:
-                date = 0
+                date = round(np.median(ages), 5)
 
-        elif ott_name in dates['node_ages']:
-            ages = [float(source['age']) for source in dates['node_ages'][ott_name]]
-            if keep_all_dates:
-                sources = [source['source_id'] for source in dates['node_ages'][ott_name]]
-                date = ages
-            else:
-                ages.sort()
-
-                num_ages = len(ages)
-                midpoint = int((num_ages-1)/2)
-                if num_ages % 2 == 0:
-                    # assume num_ages > 0 or we wouldn't have got here
-                    median_age = (ages[midpoint] + ages[midpoint+1]) / 2
-                else:
-                    median_age = ages[midpoint]
-
-                if node.is_leaf:
-                    logger.warning("Warning: %s is dated leaf of age %f" % (node.name, median_age))
-
-                if not node.is_leaf and median_age < 0.000001:
-                    logger.warning("Warning: computed median age of zero on interior node %s; instead, setting date for this node to None" % node.name)
-                else:
-                    date = median_age
+            if date < 0.000001:
+                logger.warning("Warning: computed age of zero on interior node %s; instead, setting date for this node to None" % node.name)
 
         node.add_prop("date", date)
         node.add_prop("imputed_date", False)
         node.add_prop("imputation_type", 0)
 
-        if keep_all_dates:
-            node.add_prop("date_sources", sources)
+    # return date_sources
 
 
 def remove_inconsistent_dates(parent, mrad=None):
@@ -98,7 +135,7 @@ def remove_inconsistent_dates(parent, mrad=None):
             if round(parent.props["date"],6) >= round(mrad,6):
                 # if it is older than an ancestor, throw away the date information at this node
                 parent.props["date"] = None
-                logger.info("Removing inconsistent date at node %s." % parent.name)
+                # logger.info("Removing inconsistent date at node %s." % parent.name)
             else:
                 next_mrad = parent.props["date"]
 
@@ -152,7 +189,7 @@ def label_older_descendants(parent):
 
 
 def build_dq_dict(tre):
-    """Take a tree labelled by the get_older_descendants function and builds a dictionary. The keys
+    """Take a tree labelled by the label_older_descendants function and builds a dictionary. The keys
     are the inconsistent nodes. The values are a list: [set of older descendants,
                                                         set of younger ancestors,
                                                         pointer to equivalent node in whole tree]
@@ -160,7 +197,7 @@ def build_dq_dict(tre):
 
     dq_dict = {}
 
-    for node in tre.traverse():
+    for node in tre.traverse(strategy="preorder"):
         if node == tre:
             # ignore root node; we assume this is correct
             continue
@@ -202,6 +239,9 @@ def dq_date_removal(tre):
         dq_counts_info.append([dq_counts[node_name], dq_dict[node_name][2]])
 
     def tuple_value(x):
+        # used for picking a max value: i.e. highest count, with tie breakers being:
+        #  1. favour removing dates on mrca nodes rather than named nodes;
+        #  2. favour removing the tied node whose paired node is younger
         if x[1].name[:4] == "mrca":
             mrca = 1
         else:
@@ -209,8 +249,9 @@ def dq_date_removal(tre):
 
         return (x[0], mrca, -round(x[1].props["date"],6))
 
+
     if len(dq_counts_info) == 0:
-        print("No inconsistent dates to remove.")
+        logger.info("In dq_date_removal: No inconsistent dates to remove.")
         return
 
     max_count = max(dq_counts_info, key=tuple_value)
@@ -285,7 +326,8 @@ def impute_clade_birth_model(choices, dates, rng):
         probs = np.array([c.props["num_leaves"]-1 for c in choices])
         probs = probs / np.sum(probs)
 
-        next_node = rng.choice(choices, p=probs)
+        next_node_idx = rng.choice(range(len(choices)), p=probs)
+        next_node = choices[next_node_idx]
 
         next_node.props["date"] = dates[i]
         next_node.props["imputation_type"] = 4
@@ -437,11 +479,11 @@ def round_to_4sf(x):
 
 def compute_branch_lengths(tre, round_numbers=False):
     """Fill in 'dist' field with branch lengths. Intended for a fully dated tree."""
-    for node in tre.traverse():
+    for node in tre.traverse(strategy="preorder"):
         if node.up:
             dist = node.up.props["date"] - node.props["date"]
             if dist < 0:
-                logger.warning("Warning: Negative branch length above %s" % node.name)
+                logger.error("Error: Negative branch length above %s" % node.name)
 
             if round_numbers:
                 node.dist = round_to_4sf(dist)
@@ -452,10 +494,18 @@ def compute_branch_lengths(tre, round_numbers=False):
 def write_tree_with_branch_lengths(tre, filename):
     """Write out dated tree in Newick format (suitable for OneZoom). Branch lengths rounded
     to 4 sig figs to save space in the text file."""
-    compute_branch_lengths(tre, round_numbers=False)
+    # compute_branch_lengths(tre, round_numbers=False)
+
+    from ete4.parser.newick import DIST, NAME
+    MY_DIST = DIST.copy()
+    MY_DIST['write'] = lambda x: "%.7f" % float(x)
+    custom_parser = {
+        'leaf':     [NAME, MY_DIST],
+        'internal': [NAME, MY_DIST]
+    }
 
     tre.write(outfile=filename,
-                 parser=1,
+                 parser=custom_parser,
                  format_root_node=True)
 
 

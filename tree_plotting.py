@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 
-import ete3
+# import ete3
+
+from PyQt6.QtGui import QFont
+# Add the missing attribute that ETE is looking for
+if not hasattr(QFont, "StyleItalic"):
+    QFont.StyleItalic = QFont.Style.StyleItalic
+
+import ete4
 import numpy as np
 from taxonomy_utils import tx_levels
 import tree_fixing
@@ -46,7 +53,7 @@ def plot_labels(input_tre, filename):
     # plot tree
     for node in tre.traverse(strategy="preorder"):
 
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 1
         nstyle["hz_line_width"] = 1
         nstyle["vt_line_color"] = "gray"
@@ -55,35 +62,38 @@ def plot_labels(input_tre, filename):
         nstyle["size"] = 15
         node.set_style(nstyle)
 
-        if node.info:
-            if "GR FIX" in node.info:
+        if node.props["info"]:
+            if "GR FIX" in node.props["info"]:
                 nstyle["fgcolor"] = "limegreen"
-            elif "GR BKB" in node.info:
+            elif "GR BKB" in node.props["info"]:
                 nstyle["fgcolor"] = "greenyellow"
-            elif "OTH FIX" in node.info:
+            elif "OTH FIX" in node.props["info"]:
                 nstyle["fgcolor"] = "mediumvioletred"
                 nstyle["shape"] = "sphere"
-            elif "OTH BKB 1" in node.info:
+            elif "OTH BKB 1" in node.props["info"]:
                 nstyle["fgcolor"] = "violet"
-            elif "OTH BKB 2" in node.info:
+            elif "OTH BKB 2" in node.props["info"]:
                 nstyle["fgcolor"] = "mediumorchid"
-            elif "OTH BKB 3" in node.info:
+            elif "OTH BKB 3" in node.props["info"]:
                 nstyle["fgcolor"] = "darkviolet"
-            elif "OTH EX BKB" in node.info:
+            elif "OTH EX BKB" in node.props["info"]:
                 nstyle["fgcolor"] = "darkmagenta"
-            elif "NMP FIX" in node.info:
+            elif "NMP FIX" in node.props["info"]:
                 nstyle["fgcolor"] = "deepskyblue"
-            elif "NMP BKB" in node.info:
+            elif "NMP BKB" in node.props["info"]:
                 nstyle["fgcolor"] = "turquoise"
-            elif "NMP EX BKB" in node.info:
+            elif "NMP EX BKB" in node.props["info"]:
                 nstyle["fgcolor"] = "royalblue"
         else:
             nstyle["fgcolor"] = "grey"
 
-        node.add_face(ete3.TextFace("Name: %s\nRank: %s, %s" % (node.name, node.tx_level, node.ph_tx)), column=0, position="branch-top")
-        node.add_face(ete3.TextFace("Anc: %s\nDesc: %s\n%s" % (node.ancestral_rank, node.desc_rank, node.info)), column=0, position="branch-bottom")
+        if "date" in node.props:
+            node.add_face(ete4.treeview.TextFace("Name: %s\nRank: %s, %s, %s" % (node.name, node.props["tx_level"], node.props["ph_tx"], str(node.props["date"]) if node.props["date"] and not node.props["imputed_date"] else "")), column=0, position="branch-top")
+        else:
+            node.add_face(ete4.treeview.TextFace("Name: %s\nRank: %s, %s" % (node.name, node.props["tx_level"], node.props["ph_tx"])), column=0, position="branch-top")
+        node.add_face(ete4.treeview.TextFace("Anc: %s\nDesc: %s\n%s" % (node.props["ancestral_rank"], node.props["desc_rank"], node.props["info"])), column=0, position="branch-bottom")
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.show_leaf_name = False
     ts.mode ="r"
     ts.branch_vertical_margin = 8
@@ -194,26 +204,26 @@ def plot_figure_fixing(input_tre, filename, name_mrcas=True, info_colors=True, a
     tre.render(filename, tree_style=ts)
 
 
-def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True, arrows=True):
+def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True, arrows=True, scale=5):
     tre = input_tre.copy()
 
     # plot tree
     for node in tre.traverse(strategy="preorder"):
 
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 1
         nstyle["hz_line_width"] = 1
         nstyle["vt_line_color"] = "grey"
         nstyle["hz_line_color"] = "grey"
 
-        if arrows and node.ph_tx == "TX":
+        if arrows and node.props["ph_tx"] == "TX":
             nstyle["hz_line_type"] = 1
             nstyle["vt_line_type"] = 1
         else:
             nstyle["hz_line_type"] = 0
             nstyle["vt_line_type"] = 0
 
-        if node.ph_tx == "TX":
+        if node.props["ph_tx"] == "TX":
             nstyle["shape"] = "square"
             nstyle["size"] = 15
         else:
@@ -237,64 +247,64 @@ def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True,
             spacing = 6
 
 
-        if node is tre or (node.info and node.info != "OTH PARENT"):
-            if "GR FIX" in node.info and "Calendulauda" in node.name:
+        if node is tre or (node.props["info"] and node.props["info"] != "OTH PARENT"):
+            if "GR FIX" in node.props["info"] and "Calendulauda" in node.name:
                 nstyle["fgcolor"] = colours[0]
-            elif "OTH FIX" in node.info and "Otocoris" in node.name:
+            elif "OTH FIX" in node.props["info"] and "Otocoris" in node.name:
                 nstyle["fgcolor"] = colours[1]
-            elif "OTH FIX" in node.info and "Colluricinclidae" in node.name:
+            elif "OTH FIX" in node.props["info"] and "Colluricinclidae" in node.name:
                 nstyle["fgcolor"] = colours[4]
-            elif "OTH FIX" in node.info and "Laphyctes" in node.name:
+            elif "OTH FIX" in node.props["info"] and "Laphyctes" in node.name:
                 nstyle["fgcolor"] = colours[2]
-            elif "NMP FIX" in node.info and "Rhectes" not in node.name:
+            elif "NMP FIX" in node.props["info"] and "Rhectes" not in node.name:
                 nstyle["fgcolor"] = colours[3]
             else:
                 nstyle["fgcolor"] = "#BBBBBB"
 
             if arrows:
-                if "GR BKB Calendulauda" in node.info or node.name == "Calendulauda":
-                    node.add_face(ete3.TextFace("B ", fgcolor=colours[0], fsize=10, bold=True), 1, position="branch-top")
+                if "GR BKB Calendulauda" in node.props["info"] or node.name == "Calendulauda":
+                    node.add_face(ete4.treeview.TextFace("B ", fgcolor=colours[0], fsize=10, bold=True), 1, position="branch-top")
                 else:
-                    node.add_face(ete3.TextFace("B ", fgcolor="white", fsize=10, bold=True), 1, position="branch-top")
+                    node.add_face(ete4.treeview.TextFace("B ", fgcolor="white", fsize=10, bold=True), 1, position="branch-top")
 
-                if (("OTH BKB" in node.info or "OTH EX BKB" in node.info) and "Alaudidae genus" in node.info) or node.name == "Alaudidae":
-                    node.add_face(ete3.TextFace("C ", fgcolor=colours[1], fsize=10, bold=True), 2, position="branch-top")
+                if (("OTH BKB" in node.props["info"] or "OTH EX BKB" in node.props["info"]) and "Alaudidae genus" in node.props["info"]) or node.name == "Alaudidae":
+                    node.add_face(ete4.treeview.TextFace("C ", fgcolor=colours[1], fsize=10, bold=True), 2, position="branch-top")
                 else:
-                    node.add_face(ete3.TextFace("C ", fgcolor="white", fsize=10, bold=True), 2, position="branch-top")
+                    node.add_face(ete4.treeview.TextFace("C ", fgcolor="white", fsize=10, bold=True), 2, position="branch-top")
 
-                if ("NMP BKB" in node.info or "NMP EX BKB" in node.info) and "Mirafra" in node.info:
-                    node.add_face(ete3.TextFace("A ", fgcolor=colours[3], fsize=10, bold=True), 0, position="branch-top")
+                if ("NMP BKB" in node.props["info"] or "NMP EX BKB" in node.props["info"]) and "Mirafra" in node.props["info"]:
+                    node.add_face(ete4.treeview.TextFace("A ", fgcolor=colours[3], fsize=10, bold=True), 0, position="branch-top")
                 else:
-                    node.add_face(ete3.TextFace("A ", fgcolor="white", fsize=10, bold=True), 0, position="branch-top")
+                    node.add_face(ete4.treeview.TextFace("A ", fgcolor="white", fsize=10, bold=True), 0, position="branch-top")
 
-                if (("OTH BKB" in node.info or "OTH EX BKB" in node.info) and "Passeriformes family" in node.info) or node.tx_level == "order":
-                    node.add_face(ete3.TextFace("D ", fgcolor=colours[4], fsize=10, bold=True), 3, position="branch-top")
+                if (("OTH BKB" in node.props["info"] or "OTH EX BKB" in node.props["info"]) and "Passeriformes family" in node.props["info"]) or node.props["tx_level"] == "order":
+                    node.add_face(ete4.treeview.TextFace("D ", fgcolor=colours[4], fsize=10, bold=True), 3, position="branch-top")
                 else:
-                    node.add_face(ete3.TextFace("D ", fgcolor="white", fsize=10, bold=True), 3, position="branch-top")
+                    node.add_face(ete4.treeview.TextFace("D ", fgcolor="white", fsize=10, bold=True), 3, position="branch-top")
 
-                if (("OTH BKB" in node.info or "OTH EX BKB" in node.info) and "Passeriformes genus" in node.info) or node.tx_level == "order":
-                    node.add_face(ete3.TextFace("E ", fgcolor=colours[2], fsize=10, bold=True), 4, position="branch-top")
+                if (("OTH BKB" in node.props["info"] or "OTH EX BKB" in node.props["info"]) and "Passeriformes genus" in node.props["info"]) or node.props["tx_level"] == "order":
+                    node.add_face(ete4.treeview.TextFace("E ", fgcolor=colours[2], fsize=10, bold=True), 4, position="branch-top")
                 else:
-                    node.add_face(ete3.TextFace("E ", fgcolor="white", fsize=10, bold=True), 4, position="branch-top")
+                    node.add_face(ete4.treeview.TextFace("E ", fgcolor="white", fsize=10, bold=True), 4, position="branch-top")
 
-                if node.ph_tx == "TX":
+                if node.props["ph_tx"] == "TX":
                     if node.name[:12] == "Calendulauda":
-                        node.add_face(ete3.TextFace("b ", fgcolor=colours[0], fsize=10, bold=True), 5, position="branch-top")
+                        node.add_face(ete4.treeview.TextFace("b ", fgcolor=colours[0], fsize=10, bold=True), 5, position="branch-top")
                     if node.name[:8] == "Otocoris":
-                        node.add_face(ete3.TextFace("c ", fgcolor=colours[1], fsize=10, bold=True), 5, position="branch-top")
+                        node.add_face(ete4.treeview.TextFace("c ", fgcolor=colours[1], fsize=10, bold=True), 5, position="branch-top")
                     if node.name[:7] == "Mirafra":
-                        node.add_face(ete3.TextFace("a ", fgcolor=colours[3], fsize=10, bold=True), 5, position="branch-top")
+                        node.add_face(ete4.treeview.TextFace("a ", fgcolor=colours[3], fsize=10, bold=True), 5, position="branch-top")
                     if node.name[:16] == "Colluricinclidae":
-                        node.add_face(ete3.TextFace("d ", fgcolor=colours[4], fsize=10, bold=True), 5, position="branch-top")
+                        node.add_face(ete4.treeview.TextFace("d ", fgcolor=colours[4], fsize=10, bold=True), 5, position="branch-top")
                     if node.name[:9] == "Laphyctes":
-                        node.add_face(ete3.TextFace("e ", fgcolor=colours[2], fsize=10, bold=True), 5, position="branch-top")
+                        node.add_face(ete4.treeview.TextFace("e ", fgcolor=colours[2], fsize=10, bold=True), 5, position="branch-top")
 
                 else:
-                    node.add_face(ete3.TextFace("A ", fgcolor="white", fsize=10, bold=True), 5, position="branch-top")
+                    node.add_face(ete4.treeview.TextFace("A ", fgcolor="white", fsize=10, bold=True), 5, position="branch-top")
 
             else:
                 for i in range(6):
-                    node.add_face(ete3.TextFace("A ", fgcolor="white", fsize=10, bold=True), i, position="branch-top")
+                    node.add_face(ete4.treeview.TextFace("A ", fgcolor="white", fsize=10, bold=True), i, position="branch-top")
 
         else:
             nstyle["fgcolor"] = "#BBBBBB"
@@ -302,19 +312,23 @@ def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True,
 
         node.set_style(nstyle)
 
-        if not (tx_levels[node.tx_level] == tx_levels["mrca"] and not name_mrcas):
-            if tx_levels[node.tx_level] == tx_levels["species"]:
-                node.add_face(ete3.TextFace(" " + name_to_simple_name(node.name), fstyle="italic", fsize=10), column=0, position="branch-right")
+        if not (tx_levels[node.props["tx_level"]] == tx_levels["mrca"] and not name_mrcas):
+            if tx_levels[node.props["tx_level"]] == tx_levels["species"]:
+                # node.add_face(ete4.treeview.TextFace(" " + name_to_simple_name(node.name), style={"fstyle": "italic", "fsize": 10}), column=0, position="branch-right")
+                from ete4.treeview import TextFace
+                # tf = TextFace(" " + name_to_simple_name(node.name), style={"fstyle": "italic", "fsize": 10})
+                tf = TextFace(" " + name_to_simple_name(node.name), fstyle="italic")
+                node.add_face(tf, column=0, position="branch-right")
             else:
-                # node.add_face(ete3.TextFace(name_to_simple_name(node.name), fsize=9), column=0, position="branch-top")
-                node.add_face(ete3.TextFace((' ' * spacing) +
+                # node.add_face(ete4.treeview.TextFace(name_to_simple_name(node.name), fsize=9), column=0, position="branch-top")
+                node.add_face(ete4.treeview.TextFace((' ' * spacing) +
                                             "%s\n" % name_to_simple_name(node.name) +
                                             (' ' * spacing) +
-                                            "%s" % node.tx_level, fsize=9), column=0, position="branch-bottom")
-                # node.add_face(ete3.TextFace("%s" % (node.tx_level), fsize=9), column=0, position="branch-bottom")
+                                            "%s" % node.props["tx_level"], fsize=9), column=0, position="branch-bottom")
+                # node.add_face(ete4.treeview.TextFace("%s" % (node.props["tx_level"]), fsize=9), column=0, position="branch-bottom")
 
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.margin_right = 80
     ts.show_leaf_name = False
     ts.mode ="r"
@@ -322,7 +336,7 @@ def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True,
         ts.branch_vertical_margin = -7
     else:
         ts.branch_vertical_margin = -7
-    ts.scale = 5
+    ts.scale = scale
     ts.show_scale = False
 
     tre.render(filename, tree_style=ts, units="in", w=6, dpi=300)
@@ -1075,7 +1089,95 @@ def plot_dates_figure(input_tre, filename, show_ranks=False, show_pct=False, log
     tre.render(filename, tree_style=ts)
 
 
+def plot_big_tree(input_tre, filename, scale=0.5):
+    import ete4
+    tre = input_tre.copy()
+
+    # orig_nodes = []
+    # for node in tre.traverse(strategy="preorder"):
+    #     orig_nodes.append(node)
+
+    # for node in orig_nodes:
+    #     # 1. Create dummy intermediate nodes
+    #     # We give them a tiny distance to create the 'step' look
+    #     if len(node.children) > 0:
+    #         print(node.name, len(node.children))
+    #         a = node.children[1].detach()
+    #         b = node.children[0].detach()
+
+    #         d1 = node.add_child(name="dummy_red", dist=0.1)
+    #         d2 = node.add_child(name="dummy_blue", dist=0.1)
+
+    #         d1.add_child(a)
+    #         d2.add_child(b)
+    #         d1.add_prop("pd", a.props["pd"])
+    #         d2.add_prop("pd", b.props["pd"])
+
+    import matplotlib
+    cmap = matplotlib.colormaps['viridis']
+
+    all_pds = []
+    for node in tre.traverse(strategy="preorder"):
+        all_pds.append(node.props["pd"])
+
+    max_pd = np.log(np.max(all_pds))
+    min_pd = np.log(np.min(all_pds))
+
+    for node in tre.traverse(strategy="preorder"):
+        nstyle = ete4.treeview.NodeStyle()
+
+        pd_conversion = (np.log(node.props["pd"]) - min_pd) / (max_pd - min_pd)
+        rgba = cmap(1-pd_conversion)
+        color_str = "#"
+        for i in range(3):
+            color_str += pct_to_color_hex_str(rgba[i])
+
+        print(node.name, node.props["pd"], pd_conversion, color_str)
+        nstyle["vt_line_color"] = color_str
+        nstyle["vt_line_type"] = 0
+        nstyle["vt_line_width"] = 3
+        nstyle["hz_line_color"] = color_str
+        nstyle["hz_line_type"] = 0
+        nstyle["hz_line_width"] = 3
+
+        if node is tre:
+            # colour the root node itself
+            nstyle["size"] = 15
+            nstyle["shape"] = "square"
+            rgba = cmap(0)
+            color_str = "#"
+            for i in range(3):
+                color_str += pct_to_color_hex_str(rgba[i])
+            nstyle["fgcolor"] = color_str
+        else:
+            nstyle["size"] = 0
+
+        if node.is_leaf:
+            node.add_face(ete4.treeview.TextFace("%s" % (name_to_simple_name(node.name)), fsize=8), column=0, position="branch-right")
+
+        node.set_style(nstyle)
+
+    ts = ete4.treeview.TreeStyle()
+    ts.mode = "r"
+    ts.show_leaf_name = False
+
+    ts.show_scale = False
+    ts.margin_top = 0
+    ts.margin_bottom = 0
+    ts.margin_right = 30
+    ts.margin_left = 0
+    ts.root_opening_factor = 0
+    ts.draw_guiding_lines = True
+    ts.branch_vertical_margin = 5
+    ts.draw_guiding_lines = True
+
+    ts.scale = scale
+
+    tre.render(filename, tree_style=ts)
+
+
 def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=False, log_scale_dates=False, log_scale_branches=False, simple_label=False, dpi=None):
+    import ete4
     tre = input_tre.copy()
 
     import matplotlib
@@ -1084,39 +1186,41 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
 
     if log_scale_dates:
         for node in tre.traverse():
-            node.date = np.log(node.date)
+            node.props["date"] = np.log(node.props["date"])
         for node in tre.traverse():
             if node == tre:
                 node.dist = 0.1
                 continue
-            node.dist = node.up.date - node.date
+            node.dist = node.up.props["date"] - node.props["date"]
     elif log_scale_branches:
         for node in tre.traverse():
+            # if node is not tre:
             node.dist = np.log(node.dist)
 
-        edge_date = tre.date - tre.get_farthest_leaf()[1]
+        edge_date = tre.props["date"] - tre.get_farthest_leaf()[1]
         farthest_dist = tre.get_farthest_leaf()[1]
 
-        leaves = tre.get_leaves()
+        leaves = tre.leaves()
 
         for node in leaves:
             new_node = tree_fixing.create_node(node.name)
             node.add_child(new_node)
-            new_node.date = node.date
-            face_radius = 0.7 * (5 + 18*np.sqrt(node.num_leaves) / 900) / 3.14
-            new_node.dist = farthest_dist - node.get_distance(tre) + farthest_dist/10 - face_radius
-            new_node.add_feature("num_leaves", node.num_leaves)
-            new_node.add_feature("child_tree_size", node.child_tree_size)
-            new_node.add_feature("num_dates", node.num_dates)
-            new_node.add_feature("pd", node.pd)
+            new_node.props["date"] = node.props["date"]
+            face_radius = 3 + node.props["num_leaves"]**(1/3)/4
+            # face_radius = 0.7 * (5 + 18*np.sqrt(node.props["num_leaves"]) / 900) / 3.14
+            # new_node.dist = farthest_dist - node.get_distance(node, tre) + farthest_dist/10 - face_radius
+            new_node.dist = farthest_dist + farthest_dist/15 - node.get_distance(node, tre) - face_radius/4.5
+            new_node.add_prop("num_leaves", node.props["num_leaves"])
+            new_node.add_prop("child_tree_size", node.props["child_tree_size"])
+            new_node.add_prop("num_dates", node.props["num_dates"])
+            new_node.add_prop("pd", node.props["pd"])
+            new_node.add_prop("imputed_date", node.props["imputed_date"])
 
-
-    leaves = tre.get_leaves()
-    n_leaves = len(leaves)
+    n_leaves = len(tre)
 
     # Map leaves to angles
     leaf_angles = {}
-    for i, leaf in enumerate(leaves):
+    for i, leaf in enumerate(tre.leaves()):
         angle = (360.0 * i) / n_leaves
         leaf_angles[leaf.name] = angle
 
@@ -1126,18 +1230,19 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
 
     cl = "black"
     for node in tre.traverse(strategy='preorder'):
-        if "Opisthokonta" in node.name:
-            cl = "black"
-        if "mrcaott2ott3973" in node.name:
-            cl = "#009E73"
-        elif "Metazoa" in node.name:
-            cl = "#0072B2"
-        # elif "Fungi" in node.name:
-        #     cl = "red"
-        elif len(node.children) > 0 and "Microsporidia" in node.children[0].name:
-            cl = "#E69F00"
+        # if "Opisthokonta" in node.name:
+        #     cl = "black"
+        # if "mrcaott2ott3973" in node.name:
+        #     cl = "#009E73"
+        # elif "Metazoa" in node.name:
+        #     cl = "#0072B2"
+        # # elif "Fungi" in node.name:
+        # #     cl = "red"
+        # elif len(node.children) > 0 and "Microsporidia" in node.children[0].name:
+        #     cl = "#E69F00"
+        cl = "#333333"
 
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 3
         nstyle["hz_line_width"] = 3
         nstyle["vt_line_color"] = cl
@@ -1153,19 +1258,21 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
         # elif "Nucletmycea" in node.name:
         #     nstyle["bgcolor"] = "lightpink"
 
-        if log_scale_dates and node.is_leaf():
+        if log_scale_dates and node.is_leaf:
             nstyle["vt_line_color"] = "white"
             nstyle["hz_line_color"] = "white"
 
-        if log_scale_branches and node.tx_level == "phylum":
-            node_scaling = np.sqrt(node.num_leaves) / 1086
-            nstyle["size"] = 3 + 26*node_scaling
+        if log_scale_branches and (node.props["tx_level"] == "phylum" or node.props["tx_level"] == "infrakingdom"):
+            # node_scaling = np.sqrt(node.props["num_leaves"]) / 1086
+            # nstyle["size"] = 3 + 26*node_scaling
+            node_size = node.props["num_leaves"]**(1/3) / 4
+            nstyle["size"] = node_size
 
-            if node.num_dates == 0:
+            if node.props["num_dates"] == 0:
                 color_scale = 0
             else:
                 # color_scale = 0.85 - 0.8*(np.log(1+100*node.num_dates/node.child_tree_size) / 3.22)
-                color_scale = .15 + .85*(((100*node.num_dates/node.child_tree_size)**0.25) / 2.2)
+                color_scale = .15 + .85*(((100*node.props["num_dates"]/node.props["child_tree_size"])**0.25) / 2.2)
 
             rgba = cmap(color_scale)
             color_str = "#"
@@ -1175,24 +1282,24 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
             # print(color_str)
             # nstyle["fgcolor"] = color_str
             nstyle["fgcolor"] = cl
-            nstyle["shape"] = "circle"
+            nstyle["shape"] = "sphere"
 
         else:
             nstyle["size"] = 0
 
-        if log_scale_branches and node.is_leaf():
+        if log_scale_branches and node.is_leaf:
             nstyle["hz_line_color"] = "#CFCFCF"
             nstyle["hz_line_type"] = 1
             nstyle["hz_line_width"] = 1
             nstyle["shape"] = "square"
 
-            nstyle["size"] = 17
+            nstyle["size"] = 19
 
             # pd_scale = ((node.pd/1000)**(1/6)-0.2) / 5.6
             # pd_scale = ((node.pd/1000)**(1/6)-0.745) / (5.77 - 0.745)
             # pd_scale = (np.log(node.pd/1000)+2.065) / (10.498+2.065)
-            pd_scale = (np.log(node.pd/1000)-0.88) / (9.522-0.88)
-            print(pd_scale, node.pd)
+            pd_scale = (np.log(node.props["pd"]/1000)-0.8788) / (9.44405685-0.8788)
+            print('PD:', node.name, pd_scale, node.props["pd"], node.props["ph_tx"], node.props["imputed_date"])
             # print(pd_scale)
             rgba = cmap(pd_scale)
             color_str = "#"
@@ -1203,86 +1310,93 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
         node.set_style(nstyle)
 
 
-        if node.is_leaf():
+        if node.is_leaf:
             if log_scale_dates:
-                node.add_face(ete3.TextFace("%s" % (name_to_simple_name(node.name)), fsize=8),
+                node.add_face(ete4.TextFace("%s" % (name_to_simple_name(node.name)), fsize=8),
                         column=0, position="branch-right")
             elif log_scale_branches:
-                if node.num_leaves < 1000:
-                    num_spp_str = "%.0f" % (node.num_leaves)
-                elif node.num_leaves < 10000:
-                    num_spp_str = "%.2fk" % (node.num_leaves/1000)
-                elif node.num_leaves < 100000:
-                    num_spp_str = "%.1fk" % (node.num_leaves/1000)
-                elif node.num_leaves < 1000000:
-                    num_spp_str = "%.0fk" % (node.num_leaves/1000)
+                if node.props["num_leaves"] < 1000:
+                    num_spp_str = "%.0f" % (node.props["num_leaves"])
+                elif node.props["num_leaves"] < 10000:
+                    num_spp_str = "%.2fk" % (node.props["num_leaves"]/1000)
+                elif node.props["num_leaves"] < 100000:
+                    num_spp_str = "%.1fk" % (node.props["num_leaves"]/1000)
+                elif node.props["num_leaves"] < 1000000:
+                    num_spp_str = "%.0fk" % (node.props["num_leaves"]/1000)
                 else:
-                    num_spp_str = "%.2fM" % (node.num_leaves/1000000)
+                    num_spp_str = "%.2fM" % (node.props["num_leaves"]/1000000)
 
-                if node.num_dates < 0.000001:
+                if node.props["num_dates"] < 0.000001:
                     pct_dated_str = "no"
-                elif 100*node.num_dates/node.child_tree_size < 0.1:
-                    pct_dated_str = "%.3f%%" % (100*node.num_dates/node.child_tree_size)
-                elif 100*node.num_dates/node.child_tree_size < 1:
-                    pct_dated_str = "%.2f%%" % (100*node.num_dates/node.child_tree_size)
-                elif 100*node.num_dates/node.child_tree_size < 10:
-                    pct_dated_str = "%.1f%%" % (100*node.num_dates/node.child_tree_size)
+                elif 100*node.props["num_dates"]/node.props["child_tree_size"] < 0.1:
+                    pct_dated_str = "%.3f%%" % (100*node.props["num_dates"]/node.props["child_tree_size"])
+                elif 100*node.props["num_dates"]/node.props["child_tree_size"] < 1:
+                    pct_dated_str = "%.2f%%" % (100*node.props["num_dates"]/node.props["child_tree_size"])
+                elif 100*node.props["num_dates"]/node.props["child_tree_size"] < 10:
+                    pct_dated_str = "%.1f%%" % (100*node.props["num_dates"]/node.props["child_tree_size"])
                 else:
-                    pct_dated_str = "%.0f%%" % (100*node.num_dates/node.child_tree_size)
+                    pct_dated_str = "%.0f%%" % (100*node.props["num_dates"]/node.props["child_tree_size"])
 
-                if node.pd < 1000:
-                    pd_str = "%.0f Myr" % (node.pd)
-                elif node.pd < 10000:
-                    pd_str = "%.2f Byr" % (node.pd/1000)
-                elif node.pd < 100000:
-                    pd_str = "%.1f Byr" % (node.pd/1000)
-                elif node.pd < 1000000:
-                    pd_str = "%.0f Byr" % (node.pd/1000)
-                elif node.pd < 10000000:
-                    pd_str = "%.2f Tyr" % (node.pd/1000000)
-                elif node.pd < 100000000:
-                    pd_str = "%.1f Tyr" % (node.pd/1000000)
+                if node.props["pd"] < 1000:
+                    pd_str = "%.0f Myr" % (node.props["pd"])
+                elif node.props["pd"] < 10000:
+                    pd_str = "%.2f Byr" % (node.props["pd"]/1000)
+                elif node.props["pd"] < 100000:
+                    pd_str = "%.1f Byr" % (node.props["pd"]/1000)
+                elif node.props["pd"] < 1000000:
+                    pd_str = "%.0f Byr" % (node.props["pd"]/1000)
+                elif node.props["pd"] < 10000000:
+                    pd_str = "%.2f Tyr" % (node.props["pd"]/1000000)
+                elif node.props["pd"] < 100000000:
+                    pd_str = "%.1f Tyr" % (node.props["pd"]/1000000)
                 else:
-                    pd_str = "%.0f Tyr" % (node.pd/1000000)
+                    pd_str = "%.0f Tyr" % (node.props["pd"]/1000000)
 
                 # if simple_label:
-                #     node.add_face(ete3.TextFace("%s" % (name_to_simple_name(node.name)), fsize=12),
+                #     node.add_face(ete4.treeview.TextFace("%s" % (name_to_simple_name(node.name)), fsize=12),
                 #         column=0, position="branch-right")
-                #     node.add_face(ete3.TextFace("%.0f Mya, %s spp." % (node.date, num_spp_str), fsize=10),
+                #     node.add_face(ete4.treeview.TextFace("%.0f Mya, %s spp." % (node.props["date"], num_spp_str), fsize=10),
                 #         column=0, position="branch-right")
                 # else:
-                #     node.add_face(ete3.TextFace("%s, %.0f Mya, %s\n%s spp., %s dated nodes" % (name_to_simple_name(node.name), node.date, pd_str, num_spp_str, pct_dated_str), fsize=12),
+                #     node.add_face(ete4.treeview.TextFace("%s, %.0f Mya, %s\n%s spp., %s dated nodes" % (name_to_simple_name(node.name), node.props["date"], pd_str, num_spp_str, pct_dated_str), fsize=12),
                 #         column=0, position="branch-right")
 
 
                 if simple_label:
                     angle = leaf_angles.get(node.name, 0)
-                    if 90 < angle < 270:
-                        date_label_str = "%.0f Mya, %s spp. " % (node.date, num_spp_str)
-                        face1 = ete3.TextFace(date_label_str, fsize=12, ftype="Arial")
+                    print(node.name, angle, node_size)
+                    if 90 < angle < 271:
+                        date_label_str = "%.0f Mya, %s spp. " % (node.props["date"], num_spp_str)
+                        face1 = ete4.treeview.TextFace(date_label_str, fsize=11, ftype="Arial")
 
                         name_label = name_to_simple_name(node.name)
                         space = ""
-                        for i in range(max(0,14-len(name_label))):
+
+                        for i in range(max(0,13-len(name_label))):
                             space += " "
                         for i in range(max(0,12-len(name_label))):
                             space += " "
 
-                        if name_label == "Nematoda" or name_label == "Gnathostomulida" or name_label == "Amoebozoa" or name_label == "Rhombozoa" or name_label == "Platyhelminthes":
+                        if name_label == "Nematoda" or name_label == "Gnathostomulida" or name_label == "Rhombozoa" or name_label == "Platyhelminthes":
                             name_label += " "
+                        if name_label == "Nematomorpha":
+                            name_label += " "
+                        if name_label == "Onychophora" or name_label == "Bryozoa":
+                            name_label += " "
+                        name_label += " "
 
-                        face2 = ete3.TextFace("%s%s" % (space, name_label), fsize=13, ftype="Arial")
-                        face1.rotation = 181
-                        face2.rotation = 181
+                        face2 = ete4.treeview.TextFace("%s%s" % (space, name_label), fsize=14, ftype="Arial")
+                        # face1.rotation = 181
+                        # face2.rotation = 181
 
-                        spacer = ete3.RectFace(width=32, height=1, fgcolor=None, bgcolor=None)
+                        spacer = ete4.treeview.RectFace(width=32, height=1, fgcolor=None, bgcolor=None)
                         node.add_face(spacer, column=0, position="branch-right")
 
                     else:
-                        face1 = ete3.TextFace("%s" % (name_to_simple_name(node.name)), fsize=13, ftype="Arial")
-                        face2 = ete3.TextFace("%.0f Mya, %s spp." % (node.date, num_spp_str), fsize=12, ftype="Arial")
+                        face1 = ete4.treeview.TextFace(" %s" % (name_to_simple_name(node.name)), fsize=14, ftype="Arial")
+                        face2 = ete4.treeview.TextFace(" %.0f Mya, %s spp." % (node.props["date"], num_spp_str), fsize=11, ftype="Arial")
 
-                        spacer = ete3.RectFace(width=2, height=1, fgcolor=None, bgcolor=None)
+                        spacer = ete4.treeview.RectFace(width=2, height=1, fgcolor=None, bgcolor=None)
                         node.add_face(spacer, column=0, position="branch-right")
 
 
@@ -1293,24 +1407,24 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
 
 
                 else:
-                    node.add_face(ete3.TextFace("%s, %.0f Mya, %s\n%s spp., %s dated nodes" % (name_to_simple_name(node.name), node.date, pd_str, num_spp_str, pct_dated_str), fsize=12),
+                    node.add_face(ete4.treeview.TextFace("%s, %.0f Mya, %s\n%s spp., %s dated nodes" % (name_to_simple_name(node.name), node.props["date"], pd_str, num_spp_str, pct_dated_str), fsize=12),
                         column=0, position="branch-right")
 
-                # print("%s\t%.0f\t%s\t%s\t%s\t%d" % (name_to_simple_name(node.name), node.date, pd_str, num_spp_str, pct_dated_str, node.num_leaves))
+                # print("%s\t%.0f\t%s\t%s\t%s\t%d" % (name_to_simple_name(node.name), node.props["date"], pd_str, num_spp_str, pct_dated_str, node.num_leaves))
 
         # else:
         #     if node.tx_level != "mrca":
-        #         node.add_face(ete3.TextFace("%s" % (name_to_simple_name(node.name))), column=0, position="branch-top")
-        #     if node.date is not None:
-        #         # node.add_face(ete3.TextFace("%.1f " % (node.date)), column=0, position="branch-bottom")
-        #         node.add_face(ete3.TextFace("%.1f mya" % (node.date), fgcolor="black"), column=0, position="branch-bottom")
+        #         node.add_face(ete4.treeview.TextFace("%s" % (name_to_simple_name(node.name))), column=0, position="branch-top")
+        #     if node.props["date"] is not None:
+        #         # node.add_face(ete4.treeview.TextFace("%.1f " % (node.props["date"])), column=0, position="branch-bottom")
+        #         node.add_face(ete4.treeview.TextFace("%.1f mya" % (node.props["date"]), fgcolor="black"), column=0, position="branch-bottom")
         #     else:
-        #         node.add_face(ete3.TextFace("% "), column=0, position="branch-bottom")
+        #         node.add_face(ete4.treeview.TextFace("% "), column=0, position="branch-bottom")
 
     # def my_layout(node):
-    #     if node.is_leaf():
+    #     if node.is_leaf:
     #         # Create a label face
-    #         face = ete3.TextFace(node.name, fsize=10)
+    #         face = ete4.treeview.TextFace(node.name, fsize=10)
 
     #         # Calculate the angle of the node (used only in circular mode)
     #         # ETE will assign a node._angle attribute when using circular mode
@@ -1318,17 +1432,17 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
     #         print(node._angle)
 
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.mode = "c"
     # ts.layout_fn = my_layout
     ts.show_leaf_name = False
 
     #ts.branch_vertical_margin = 8
     ts.show_scale = False
-    ts.margin_top = 80
-    ts.margin_bottom = 80
-    ts.margin_right = 80
-    ts.margin_left = 80
+    ts.margin_top = 0
+    ts.margin_bottom = 0
+    ts.margin_right = 0
+    ts.margin_left = 0
     ts.root_opening_factor = 0
     # ts.complete_branch_lines_when_necessary = False
     ts.draw_guiding_lines = True
@@ -1336,7 +1450,7 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
     if log_scale_dates:
         ts.scale = 100
     elif log_scale_branches:
-        ts.scale = 4.8
+        ts.scale = 4.5
     ts.arc_start = 0 #235
     ts.arc_span = 359.99
     ts.min_leaf_separation = 0
@@ -1344,6 +1458,8 @@ def plot_dates_figure_outline(input_tre, filename, show_ranks=False, show_pct=Fa
     ts.children_faces_on_top = False
 
     tre.render(filename, tree_style=ts)
+    # import PIL
+    # tre.render(filename + ".tif", tree_style=ts)
 
 
 def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_paths=True, mu=False, pinkblue=True, vs=3):
