@@ -27,4 +27,4 @@ For example:
 
 2. The file `main_non_exec.py` contains code you can edit and run from your favourite Python IDE.
 
-3. A Jupyter notebook `main_edge2.ipynb` is included, which will open a Jupyter (IPython) notebook to step through the process of loading trees and computes EDGE2 scores.
+3. A Jupyter notebook `edge2_notebook.ipynb` is included, which will open a Jupyter (IPython) notebook to step through the process of loading trees and computes EDGE2 scores.
