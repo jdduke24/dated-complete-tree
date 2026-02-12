@@ -218,7 +218,7 @@ def assign_iucn_status(tre, iucn_filename="config/latest_iucn_2025.csv"):
             if status == "LR/lc":
                 status = "LC"
 
-            node.add_prop("iucn_status", iucn_lookup[ottid])
+            node.add_prop("iucn_status", status)
 
 
 def assign_extinction_risks(tre, rng=None, lookup_table="config/p_extinction.csv", randomise_risk=False, missing_value=None):
@@ -300,10 +300,12 @@ def compute_edge2_scores(tre, scores_dict=None):
                 key = (node.props["domain"] if node.props["domain"] is not None else "no_domain",
                        node.props["kingdom"] if node.props["kingdom"] is not None else "no_kingdom",
                        node.props["phylum"] if node.props["phylum"] is not None else "no_phylum",
-                       node.name)
+                       node.name,
+                       node.props["iucn_status"] if "iucn_status" in node.props else "No status")
 
-                scores_dict.setdefault(key,[[], []])[0].append(node.props["ed2_score"])
-                scores_dict[key][1].append(node.props["edge2_score"])
+                scores_dict.setdefault(key,[[], [], []])[0].append(node.props["edge2_score"])
+                scores_dict[key][1].append(node.props["ed2_score"])
+                scores_dict[key][2].append(node.props["pext"])
         else:
             if node is tre:
                 if node.dist is None:
@@ -314,49 +316,53 @@ def compute_edge2_scores(tre, scores_dict=None):
                 node.add_prop("ed2_intermediate", node.up.props["ed2_intermediate"] + node.dist * node.props["pext_product"])
 
 
-def write_edge2_scores(filename, scores_dict, per_phylum=None):
-    if per_phylum:
-        keys = [(key[0], key[1], key[2], -np.mean(scores_dict[key][1]), key[3]) for key in scores_dict]
-        keys.sort()
+def write_edge2_scores(filename, scores_dict, per_phylum=1e10):
+    """Write out the distributions of EDGE2 scores, as well as ED2 and extinction probabilities. The species will be listed in
+    order of mean EDGE2 score, largest first.
+    The per_phylum=N parameter will limit the output to the top N species per phylum by mean EDGE2 score.
+    """
 
-        dict_to_write = {}
+    keys = [(key[0], key[1], key[2], -np.mean(scores_dict[key][0]), key[3], key[4]) for key in scores_dict]
+    keys.sort()
 
-        current_key = None
-        count = 0
-        for i, sorted_key in enumerate(keys):
-            key = (sorted_key[0], sorted_key[1], sorted_key[2], sorted_key[4])
-            if current_key is None:
-                count = 1
+    dict_to_write = {}
+
+    current_key = None
+    count = 0
+    for i, sorted_key in enumerate(keys):
+        key = (sorted_key[0], sorted_key[1], sorted_key[2], sorted_key[4], sorted_key[5])
+        if current_key is None:
+            count = 1
+            dict_to_write[key] = scores_dict[key]
+            current_key = key
+        elif key[0] == current_key[0] and key[1] == current_key[1] and key[2] == current_key[2]:
+            if count < per_phylum:
                 dict_to_write[key] = scores_dict[key]
-                current_key = key
-            elif key[0] == current_key[0] and key[1] == current_key[1] and key[2] == current_key[2]:
-                if count < per_phylum:
-                    dict_to_write[key] = scores_dict[key]
-                    count += 1
-            else:
-                count = 1
-                dict_to_write[key] = scores_dict[key]
-                current_key = key
-
-    else:
-        dict_to_write = scores_dict
+                count += 1
+        else:
+            count = 1
+            dict_to_write[key] = scores_dict[key]
+            current_key = key
 
     with open(filename, "w") as fout:
         # column headings
-        col_headings =  "leaf_name,domain,kingdom,phylum,N,"
+        col_headings =  "leaf_name,iucn_status,domain,kingdom,phylum,N,"
+        col_headings += "EDGE2_mean,min,2.5pct,median,97.5pct,max,"
         col_headings += "ED2_mean,min,2.5pct,median,97.5pct,max,"
-        col_headings += "EDGE2_mean,min,2.5pct,median,97.5pct,max\n"
+        col_headings += "p_ext_mean,min,2.5pct,median,97.5pct,max\n"
         fout.write(col_headings)
 
         for key in dict_to_write:
-            string_to_write = "{:s},{:s},{:s},{:s},{:d},"
+            string_to_write = "{:s},{:s},{:s},{:s},{:s},{:d},"
+            string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f},"
             string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f},"
             string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f}\n"
 
-            fout.write(string_to_write.format(key[3] if key[3] is not None else "",
-                                              key[0] if key[0] is not None else "",
-                                              key[1] if key[1] is not None else "",
-                                              key[2] if key[2] is not None else "",
+            fout.write(string_to_write.format(key[3],
+                                              key[4],
+                                              key[0],
+                                              key[1],
+                                              key[2],
                                               len(scores_dict[key][0]),
                                               np.mean(dict_to_write[key][0]),
                                               np.min(dict_to_write[key][0]),
@@ -369,7 +375,13 @@ def write_edge2_scores(filename, scores_dict, per_phylum=None):
                                               np.percentile(dict_to_write[key][1],2.5),
                                               np.percentile(dict_to_write[key][1],50),
                                               np.percentile(dict_to_write[key][1],97.5),
-                                              np.max(dict_to_write[key][1])
+                                              np.max(dict_to_write[key][1]),
+                                              np.mean(dict_to_write[key][2]),
+                                              np.min(dict_to_write[key][2]),
+                                              np.percentile(dict_to_write[key][2],2.5),
+                                              np.percentile(dict_to_write[key][2],50),
+                                              np.percentile(dict_to_write[key][2],97.5),
+                                              np.max(dict_to_write[key][2])
                                               ))
 
 
