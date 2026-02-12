@@ -42,14 +42,14 @@ logger = logging.getLogger(__name__)
 
 
 def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
-                      phylogeny="opentree16.1_tree/annotations.json",
-                      taxonomy="ott3.7.3/taxonomy.tsv",
-                      force_dates_refresh=False,
-                      force_no_dates_refresh=False):
+                  annotations="opentree16.1_tree/annotations.json",
+                  taxonomy="ott3.7.3/taxonomy.tsv",
+                  force_dates_refresh=False,
+                  force_no_dates_refresh=False):
     """Load metadata.
     Takes:
     date_cache -- string specifying path for a JSON file which will be used by Chronosynth to cache date information from phylogenies.
-    phylogeny -- string specifying path for the annotations.json file from a Open Tree tree release.
+    annotations -- string specifying path for the annotations.json file from a Open Tree tree release.
     taxonomy -- string specifying path for the taxonomy.tsv file from an Open Tree Taxonomy release.
 
     Returns:
@@ -61,24 +61,27 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
     """
 
     # get all dates from phylesystem studies
-    dates = cg.build_synth_node_source_ages(cache_file_path=date_cache, force_reload=force_dates_refresh, force_no_reload=force_no_dates_refresh)
-    sources_to_delete = set(["ot_1250@tree2"])
-    deletions = []
-    for ott_name in dates["node_ages"]:
-        for i, source in enumerate(dates["node_ages"][ott_name]):
-            if source["source_id"] in sources_to_delete:
-                deletions.append((ott_name, i))
+    if date_cache is not None:
+        dates = cg.build_synth_node_source_ages(cache_file_path=date_cache, force_reload=force_dates_refresh, force_no_reload=force_no_dates_refresh)
+        sources_to_delete = set(["ot_1250@tree2"])
+        deletions = []
+        for ott_name in dates["node_ages"]:
+            for i, source in enumerate(dates["node_ages"][ott_name]):
+                if source["source_id"] in sources_to_delete:
+                    deletions.append((ott_name, i))
 
-    deletions.sort(reverse=True)
+        deletions.sort(reverse=True)
 
-    for ott_name, i in deletions:
-        del dates["node_ages"][ott_name][i]
-        if len(dates["node_ages"][ott_name]) == 0:
-            del dates["node_ages"][ott_name]
+        for ott_name, i in deletions:
+            del dates["node_ages"][ott_name][i]
+            if len(dates["node_ages"][ott_name]) == 0:
+                del dates["node_ages"][ott_name]
+
 
     # get phylogeny annotations - if a node is not here, it is only from taxonomy
-    annotations = json.load(open(phylogeny,"r"))
-    phylogeny_nodes = set(annotations["nodes"].keys())
+    if annotations is not None:
+        annotations_dict = json.load(open(annotations,"r"))
+        phylogeny_nodes = set(annotations_dict["nodes"].keys())
 
     # get dictionary of taxa labels (e.g. "family", "genus", "species") by OTT uid
     taxa = {}
@@ -94,21 +97,26 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
 
         taxa[int(components[0].strip())] = (components[3].strip(), extinct)
 
-    return dates, phylogeny_nodes, taxa
-
+    if date_cache is not None and annotations is not None:
+        return dates, phylogeny_nodes, taxa
+    elif annotations is not None:
+        return phylogeny_nodes, taxa
+    else:
+        return taxa
 
 def build_and_annotate_tree(phylogeny_nodes,
                             taxa,
                             tree_filename="opentree16.1_tree/labelled_supertree/labelled_supertree_ottnames.tre",
                             keep_all_dates=False,
                             ignore_extinct=True,
-                            has_branch_lengths=False):
+                            has_branch_lengths=False,
+                            suppress_logging=False):
 
     """Build an ETE3 tree containing the Open Tree of Life and annotate it with extra information to be used in topology resolution and dating.
     Removes nodes marked as "extinct" or "extinct_inherited" in the Open Tree Taxonomy."
 
     Takes:
-    dates, phylogeny_nodes, taxa -- the outputs of load_metadata().
+    phylogeny_nodes, taxa -- the outputs of load_metadata().
     tree_filename -- string specifying path to a newick tree to be loaded.
 
     Returns:
@@ -135,7 +143,8 @@ def build_and_annotate_tree(phylogeny_nodes,
     if has_branch_lengths and not tre.name:
         tre.name = "mrca_root"
 
-    logger.info("ETE3 tree loaded. Beginning annotation")
+    if not suppress_logging:
+        logger.info("ETE4 tree loaded. Beginning annotation")
 
     count = 0
 
@@ -187,21 +196,24 @@ def build_and_annotate_tree(phylogeny_nodes,
 
                 if re.search(r".*_f\._.*", node.name) and tx_level == "no rank - terminal":
                     tx_level = "forma"
-                    logger.info("Based on name, %s given rank 'forma' rather than 'no rank - terminal'." % node.name)
+                    if not suppress_logging:
+                        logger.info("Based on name, %s given rank 'forma' rather than 'no rank - terminal'." % node.name)
                 elif re.search(r".*_var\._.*", node.name) and tx_level == "no rank - terminal":
                     tx_level = "variety"
-                    logger.info("Based on name, %s given rank 'variety' rather than 'no rank - terminal'." % node.name)
+                    if not suppress_logging:
+                        logger.info("Based on name, %s given rank 'variety' rather than 'no rank - terminal'." % node.name)
 
         node.add_prop("tx_level", tx_level)
 
-        if ott_name in phylogeny_nodes or has_branch_lengths:
-            node.add_prop("ph_tx", "PH")
-        else:
-            node.add_prop("ph_tx", "TX")
-            if not ignore_extinct and node.extinct:
-                # ignore extinct nodes from taxonomy
-                extinct_nodes.add(node)
-                continue
+        if phylogeny_nodes is not None:
+            if ott_name in phylogeny_nodes or has_branch_lengths:
+                node.add_prop("ph_tx", "PH")
+            else:
+                node.add_prop("ph_tx", "TX")
+                if not ignore_extinct and node.extinct:
+                    # ignore extinct nodes from taxonomy
+                    extinct_nodes.add(node)
+                    continue
 
         if has_branch_lengths:
             node.add_prop("date", None)
@@ -223,15 +235,18 @@ def build_and_annotate_tree(phylogeny_nodes,
 
         node.add_prop("info", None)
 
-        count += 1
-        if count % 10000 == 0:
-            logger.info("%d nodes annotated" % count)
+        if not suppress_logging:
+            count += 1
+            if count % 10000 == 0:
+                logger.info("%d nodes annotated" % count)
 
-    logger.info("Annotation complete. %d nodes annotated." % count)
+    if not suppress_logging:
+        logger.info("Annotation complete. %d nodes annotated." % count)
 
     # remove things we noted as extinct (may include non-extinct nodes that we want to delete for other reasons)
     for node in extinct_nodes:
-        logger.info("Deleting extinct or unwanted node %s and tree below it." % node.name)
+        if not suppress_logging:
+            logger.info("Deleting extinct or unwanted node %s and tree below it." % node.name)
         tree_fixing.remove_tree_below(node)
         tree_fixing.remove_node_and_parents(node, False)
 

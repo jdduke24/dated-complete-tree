@@ -343,7 +343,7 @@ def impute_clade_birth_model(choices, dates, rng):
         i += 1
 
 
-def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, counts=[0,0]):
+def impute_missing_dates(tre, l=1, m=0, use_logN_model=False, use_birth_model=False, rng=None, counts=[0,0]):
     """Traverse the tree in preorder, giving each undated node a date spaced along the path between between
     its parent (which always has a date, since this is preorder traversal) and the oldest date found below
     it (as labelled by the date_labelling function). Assumes root node is dated.
@@ -357,7 +357,7 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, 
     (m > 0) or younger (m < 0). Uses spacing along an exponential function, i.e. y = exp(m*x).
     Values of m between -2 and 2 are pretty sensible.
     """
-    if useLnN or useBirth:
+    if use_logN_model or use_birth_model:
         def label_pct_dates(parent):
             if parent.is_leaf:
                 results = [0,0,1]
@@ -386,7 +386,7 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, 
             continue
 
         if node.props["date"] is None:
-            if useLnN and node.props["oldest_path_long"][0] == 0:
+            if use_logN_model and node.props["oldest_path_long"][0] == 0:
                 counts[0] += 1
                 if node.props["num_leaves"] > 1 and node.up.props["num_leaves"] > 1 and node.up.props["num_leaves"] > node.props["num_leaves"]:
                     node.props["date"] = node.up.props["date"] * np.log(node.props["num_leaves"])/np.log(node.up.props["num_leaves"])
@@ -395,7 +395,7 @@ def impute_missing_dates(tre, l=1, m=0, useLnN=False, useBirth=False, rng=None, 
                     # both parent and child
                     node.props["date"] = node.up.props["date"] - (node.up.props["date"] - node.props["oldest_path_long"][0]) / (node.props["oldest_path_long"][1]+1)
                 node.props["imputation_type"] = 3
-            elif useBirth and node.props["oldest_path_long"][0] == 0:
+            elif use_birth_model and node.props["oldest_path_long"][0] == 0:
                 # birth model, assuming that the leaves are infinitesimally close to the next speciation event
 
                 # one lineage to model or two?

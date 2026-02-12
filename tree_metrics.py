@@ -195,7 +195,7 @@ def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
     fout.close()
 
 
-def assign_iucn_status(tre, iucn_filename="EDGE2/RL_by_ott.csv"):
+def assign_iucn_status(tre, iucn_filename="config/latest_iucn_2025.csv"):
     import csv
 
     iucn_lookup = {}
@@ -212,10 +212,16 @@ def assign_iucn_status(tre, iucn_filename="EDGE2/RL_by_ott.csv"):
         ottid = int(name_parts[-1][3:])
 
         if ottid in iucn_lookup:
+            status = iucn_lookup[ottid]
+            if status == "LR/nt" or status == "LR/cd":
+                status = "NT"
+            if status == "LR/lc":
+                status = "LC"
+
             node.add_prop("iucn_status", iucn_lookup[ottid])
 
 
-def assign_extinction_risks(tre, rng=None, lookup_table="EDGE2/p_extinction.csv", randomise_risk=False, missing_value=None):
+def assign_extinction_risks(tre, rng=None, lookup_table="config/p_extinction.csv", randomise_risk=False, missing_value=None):
     """Add extinction probabilities to leaves in the tree. Assumes iucn_status is labelled
     on the leaves in the tree.
     If randomise_risk=True, draw an extinction risk from the distribution rather than using the median.
@@ -261,7 +267,7 @@ def assign_extinction_risks(tre, rng=None, lookup_table="EDGE2/p_extinction.csv"
         leaf.add_prop("pext", risk)
 
 
-def compute_edge2_scores(tre):
+def compute_edge2_scores(tre, scores_dict=None):
     """Compute ED2 and EDGE2 scores for the input tre. Assumes each leaf node has a property "pext" which
     contains its extinction probability. Leaf nodes will be labelled with properties "ed2_score" and "edge2_score"
     containing their scores.
@@ -289,6 +295,15 @@ def compute_edge2_scores(tre):
         if node.is_leaf:
             node.add_prop("ed2_score", node.dist + node.up.props["ed2_intermediate"]/node.props["pext"])
             node.add_prop("edge2_score", node.props["pext"] * node.props["ed2_score"])
+
+            if scores_dict is not None:
+                key = (node.props["domain"] if node.props["domain"] is not None else "no_domain",
+                       node.props["kingdom"] if node.props["kingdom"] is not None else "no_kingdom",
+                       node.props["phylum"] if node.props["phylum"] is not None else "no_phylum",
+                       node.name)
+
+                scores_dict.setdefault(key,[[], []])[0].append(node.props["ed2_score"])
+                scores_dict[key][1].append(node.props["edge2_score"])
         else:
             if node is tre:
                 if node.dist is None:
@@ -297,6 +312,65 @@ def compute_edge2_scores(tre):
                     node.add_prop("ed2_intermediate", node.dist * node.props["pext_product"])
             else:
                 node.add_prop("ed2_intermediate", node.up.props["ed2_intermediate"] + node.dist * node.props["pext_product"])
+
+
+def write_edge2_scores(filename, scores_dict, per_phylum=None):
+    if per_phylum:
+        keys = [(key[0], key[1], key[2], -np.mean(scores_dict[key][1]), key[3]) for key in scores_dict]
+        keys.sort()
+
+        dict_to_write = {}
+
+        current_key = None
+        count = 0
+        for i, sorted_key in enumerate(keys):
+            key = (sorted_key[0], sorted_key[1], sorted_key[2], sorted_key[4])
+            if current_key is None:
+                count = 1
+                dict_to_write[key] = scores_dict[key]
+                current_key = key
+            elif key[0] == current_key[0] and key[1] == current_key[1] and key[2] == current_key[2]:
+                if count < per_phylum:
+                    dict_to_write[key] = scores_dict[key]
+                    count += 1
+            else:
+                count = 1
+                dict_to_write[key] = scores_dict[key]
+                current_key = key
+
+    else:
+        dict_to_write = scores_dict
+
+    with open(filename, "w") as fout:
+        # column headings
+        col_headings =  "leaf_name,domain,kingdom,phylum,N,"
+        col_headings += "ED2_mean,min,2.5pct,median,97.5pct,max,"
+        col_headings += "EDGE2_mean,min,2.5pct,median,97.5pct,max\n"
+        fout.write(col_headings)
+
+        for key in dict_to_write:
+            string_to_write = "{:s},{:s},{:s},{:s},{:d},"
+            string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f},"
+            string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f}\n"
+
+            fout.write(string_to_write.format(key[3] if key[3] is not None else "",
+                                              key[0] if key[0] is not None else "",
+                                              key[1] if key[1] is not None else "",
+                                              key[2] if key[2] is not None else "",
+                                              len(scores_dict[key][0]),
+                                              np.mean(dict_to_write[key][0]),
+                                              np.min(dict_to_write[key][0]),
+                                              np.percentile(dict_to_write[key][0],2.5),
+                                              np.percentile(dict_to_write[key][0],50),
+                                              np.percentile(dict_to_write[key][0],97.5),
+                                              np.max(dict_to_write[key][0]),
+                                              np.mean(dict_to_write[key][1]),
+                                              np.min(dict_to_write[key][1]),
+                                              np.percentile(dict_to_write[key][1],2.5),
+                                              np.percentile(dict_to_write[key][1],50),
+                                              np.percentile(dict_to_write[key][1],97.5),
+                                              np.max(dict_to_write[key][1])
+                                              ))
 
 
 def compute_evoh(tre, rho):
@@ -411,6 +485,7 @@ def date_labelling_guo(parent):
     """Recurse in postorder through the tree, labelling each node with the oldest date below it
     and the path length (number of nodes) to that date.
     Return value is: [oldest date found so far below this node, path length to it]
+    For use in interpolation algorithm from Guo et al. (2025).
     """
     if parent.is_leaf:
         if parent.props["date"] != 0:
@@ -436,6 +511,8 @@ def date_labelling_guo(parent):
 
 
 def compute_ed_scores_guo(parent, ancestral_date, root=True):
+    """Implementation of ED interpolation algorithm from Guo et al. (2025)."""
+
     ed_scores = []
 
     if not root:
@@ -453,6 +530,8 @@ def compute_ed_scores_guo(parent, ancestral_date, root=True):
 
 
 def sum_ed_scores_guo(parent, root=True):
+    """Compute PD by summing ED computed my method from Guo et al. (2025)."""
+
     i = 0
     if not root:
         for child in parent.children:
