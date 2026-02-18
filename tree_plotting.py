@@ -48,6 +48,49 @@ def name_to_simple_name(name):
     return ret_str.strip()
 
 
+def plot_evoh_tree(input_tre, filename):
+    tre = input_tre.copy()
+    # plot tree
+    for node in tre.traverse(strategy="preorder"):
+
+        nstyle = ete4.treeview.NodeStyle()
+        nstyle["vt_line_width"] = 1
+        nstyle["hz_line_width"] = 1
+        nstyle["vt_line_color"] = "gray"
+        nstyle["hz_line_color"] = "gray"
+
+        nstyle["size"] = 0
+        node.set_style(nstyle)
+
+        node.add_face(ete4.treeview.TextFace("p=%.3f" % (node.props["evoh_p"]), fsize=8), column=0, position="branch-top")
+        node.add_face(ete4.treeview.TextFace("bl=%.3f" % (node.props["evoh_bl"]), fsize=8), column=0, position="branch-bottom")
+
+        if node.is_leaf:
+            node.add_face(ete4.treeview.TextFace("     %s, pext=%.2f" % (node.name, node.props["pext"]), fsize=8), column=0, position="branch-right")
+
+    new_node = ete4.Tree()
+    new_node.add_child(tre)
+    new_node.dist = 3
+    nstyle = ete4.treeview.NodeStyle()
+    nstyle["hz_line_color"] = "white"
+    nstyle["hz_line_width"] = 0
+    new_node.set_style(nstyle)
+
+    new_node.add_face(ete4.treeview.TextFace("rho=%.3f        " % (tre.props["rho"]), fsize=8), column=0, position="branch-top")
+    new_node.add_face(ete4.treeview.TextFace("EvoH=%.3f        " % (tre.props["phi_rho"]), fsize=8), column=0, position="branch-bottom")
+
+    ts = ete4.treeview.TreeStyle()
+    ts.show_leaf_name = False
+    ts.mode ="r"
+    ts.branch_vertical_margin = 60
+    ts.margin_right = 100
+    ts.show_scale = False
+
+    ts.scale = 50
+
+    new_node.render(filename, tree_style=ts)
+
+
 def plot_labels(input_tre, filename):
     tre = input_tre.copy()
     # plot tree

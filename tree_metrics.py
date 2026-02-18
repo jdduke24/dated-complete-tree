@@ -385,7 +385,12 @@ def write_edge2_scores(filename, scores_dict, per_phylum=1e10):
                                               ))
 
 
-def compute_evoh(tre, rho):
+def compute_evoh(tre, rho, include_stem=False):
+    """Compute phi_rho, the total EvoHeritage for a tree give an attrition parameter rho.
+    As rho -> infinity, phi_rho -> species richness.
+    As rho -> 0, phi_rho -> PD
+    """
+
     def evoh_beta(rho, edge_length):
         return np.exp(-rho * edge_length)
 
@@ -406,17 +411,110 @@ def compute_evoh(tre, rho):
 
     label_evoh_p(tre, rho)
 
-    gamma_rho = 0
+    phi_rho = 0
     for node in tre.traverse(strategy="preorder"):
-        if node is tre:
+        if node is tre and not include_stem:
             # don't include stem - assume we are complete tree and the root node is already the origin of life
             continue
 
-        gamma_rho += (1 - evoh_beta(rho, node.dist)) * node.props["evoh_p"]
+        phi_rho += (1 - evoh_beta(rho, node.dist)) * node.props["evoh_p"]
 
-    gamma_rho /= (1 - np.exp(-rho))
+    phi_rho /= (1 - np.exp(-rho))
 
-    return gamma_rho
+    return phi_rho
+
+
+# def compute_future_evoh(tre, rho, include_stem=False):
+#     """Compute expected future EvoHeritage.
+#     Assumes leaf nodes have been assigned an extinction risk in a "pext" property, for example by using
+#     the assign_extinction_risks() function.
+#     """
+#     def evoh_beta_pext(rho, edge_length, pext):
+#         return (np.exp(-rho * edge_length)) * (1 - pext)
+
+#     def label_evoh_p(parent, rho):
+#         if parent.is_leaf:
+#             p_survival = 1 - parent.props["pext"]
+#             parent.add_prop("evoh_p", p_survival)
+#             return p_survival
+#         else:
+#             product = 1
+#             for child in parent.children:
+#                 if child.is_leaf:
+#                     product *= (1 - label_evoh_p(child, rho) * evoh_beta_pext(rho, child.dist, child.props["pext"]))
+#                 else:
+#                     product *= (1 - label_evoh_p(child, rho) * evoh_beta_pext(rho, child.dist, 0))
+
+#             p = 1 - product
+
+#             parent.add_prop("evoh_p", p)
+
+#             return p
+
+#     label_evoh_p(tre, rho)
+
+#     phi_rho = 0
+#     for node in tre.traverse(strategy="preorder"):
+#         if node is tre and not include_stem:
+#             # don't include stem - assume we are complete tree and the root node is already the origin of life
+#             continue
+
+#         term = (1 - evoh_beta_pext(rho, node.dist, 0)) * node.props["evoh_p"] / (1 - np.exp(-rho))
+#         node.add_prop("evoh_bl", term)
+
+#         phi_rho += term
+
+#     # phi_rho /= (1 - np.exp(-rho))
+
+#     tre.add_prop("rho", rho)
+#     tre.add_prop("phi_rho", phi_rho)
+
+#     return phi_rho
+
+
+def compute_future_evoh(tre, rho, include_stem=False):
+    """Compute expected future EvoHeritage.
+    Assumes leaf nodes have been assigned an extinction risk in a "pext" property, for example by using
+    the assign_extinction_risks() function.
+    """
+    def evoh_beta(rho, edge_length):
+        return (np.exp(-rho * edge_length))
+
+    def label_evoh_p(parent, rho):
+        if parent.is_leaf:
+            p_survival = 1 - parent.props["pext"]
+            parent.add_prop("evoh_p", p_survival)
+            return p_survival
+        else:
+            product = 1
+            for child in parent.children:
+                product *= (1 - label_evoh_p(child, rho) * evoh_beta(rho, child.dist))
+
+            p = 1 - product
+
+            parent.add_prop("evoh_p", p)
+
+            return p
+
+    label_evoh_p(tre, rho)
+
+    phi_rho = 0
+    for node in tre.traverse(strategy="preorder"):
+        if node is tre and not include_stem:
+            # don't include stem - assume we are complete tree and the root node is already the origin of life
+            continue
+
+        term = (1 - evoh_beta(rho, node.dist)) * node.props["evoh_p"] / (1 - np.exp(-rho))
+        node.add_prop("evoh_bl", term)
+
+        phi_rho += term
+
+    # phi_rho /= (1 - np.exp(-rho))
+
+    tre.add_prop("rho", rho)
+    tre.add_prop("phi_rho", phi_rho)
+
+    return phi_rho
 
 
 def compute_gamma(tre):
