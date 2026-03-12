@@ -1,5 +1,35 @@
+# BSD 3-Clause License
+
+# Copyright (c) 2025, Jonathan David Duke
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 import os
-os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dating_later/dated-complete-tree')
+os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dated-complete-tree')
 
 import sys
 import numpy as np
@@ -12,7 +42,7 @@ import tree_metrics
 
 import logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.ERROR)
+logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.DEBUG)
 
 sys.setrecursionlimit(10000)
 
@@ -24,6 +54,9 @@ dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
 whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa)
+
+for node in whole_tre_unmodified.search_nodes(name="Homo_ott770309"):
+    print(node.name, node.children)
 
 tree_fixing.strip_birds(whole_tre_unmodified)
 tree_fixing.strip_turtles(whole_tre_unmodified)
@@ -39,6 +72,12 @@ tree_labelling.add_anc_ranks(whole_tre_unmodified)
 tree_labelling.add_desc_ranks(whole_tre_unmodified)
 
 tree_fixing.forced_taxa_moves(whole_tre_unmodified)
+
+for node in whole_tre_unmodified.search_nodes(name="Branchiopoda_ott632175"):
+    nd = node
+
+import tree_plotting
+tree_plotting.plot_labels(nd, "branchiopoda.svg")
 
 # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
 # reloading everything
@@ -96,5 +135,18 @@ tree_dating.date_labelling(whole_tre)
 dating_rng = np.random.default_rng(seed=100)
 tree_dating.impute_missing_dates(whole_tre, l=0.25, rng=dating_rng)
 
+for node in whole_tre.search_nodes(name="Branchiopoda_ott632175"):
+    nd = node
+
+
+
+tree_plotting.plot_labels(nd, "branchiopoda_dated.svg")
+
 tree_dating.compute_branch_lengths(whole_tre)
 tree_metrics.compute_pd(whole_tre)
+
+from taxonomy_utils import tx_levels
+
+for node in nd.traverse():
+    if tx_levels[node.props["tx_level"]] > tx_levels["genus"]:
+        print(node.name, node.props["tx_level"], node.props["date"], node.props["imputed_date"], node.props["pd"])

@@ -17,20 +17,24 @@ with open('classes_avgs.pickle', 'rb') as f:
 
 algos = ["EQS-L", "EQS-S", "LnN", "BM", "EQS-LS"]
 
-fig = pylab.figure(figsize=(9,9))
+fig = pylab.figure(figsize=(7.5,7.5))
 
 ax = fig.add_subplot(3,2,1)
 for i, algo in enumerate(fy):
     ax.plot(fx[fmc:], fy[algo][fmc:], '-', label=algos[i])
 
-ax.legend(loc="upper left", frameon=False)
+ax.legend(loc="upper left", frameon=False, prop={"size":"small", "family":"Arial"})
 ax.set_xlim((0,100))
 ax.set_ylim((0,18))
+ax.set_xticklabels(ax.get_xticklabels(), fontfamily="Arial")
 ax.set_yticks([0, 2, 4, 6, 8, 10, 12, 14, 16, 18])
-ax.set_yticklabels(["0%", "2%", "4%", "6%", "8%", "10%", "12%", "14%", "16%", "18%"])
-ax.set_ylabel("Date reproduction error:\n$abs$(orig. date - interp. date) / crown date", fontsize="small")
+ax.set_yticklabels(["0%", "2%", "4%", "6%", "8%", "10%", "12%", "14%", "16%", "18%"], fontfamily="Arial")
+ax.set_ylabel(r"$\mathbf{Date\ reproduction\ error}$" + "\n$abs$(orig. date - interp. date) / crown date", fontsize="x-small", fontfamily="Arial")
 
-ax.text(-25, 17, "A", fontsize="x-large", family=["Arial"], fontweight="bold")
+ymin, ymax = ax.get_ylim()
+ax.text(95, ymax*0.95, "A1", fontsize="large", family=["Arial"], fontweight="bold", verticalalignment="top", horizontalalignment="right")
+
+ax.text(50,19,'Fully-dated trees', family=["Arial"], horizontalalignment="center", fontsize="medium", fontweight="bold")
 
 low = 65
 high = 65.3
@@ -39,15 +43,18 @@ ax = fig.add_subplot(3,2,2)
 for i, algo in enumerate(cy):
     ax.plot(cx[cmc:], cy[algo][cmc:], '-', label=algos[i])
 
-ax.legend(loc="upper left", frameon=False)
+ax.legend(loc="upper left", frameon=False, prop={"size":"small", "family":"Arial"})
 ax.set_xlim((0,100))
 ax.set_ylim((0,18))
+ax.set_xticklabels(ax.get_xticklabels(), fontfamily="Arial")
 ax.set_yticks([0, 2, 4, 6, 8, 10, 12, 14, 16, 18])
-ax.set_yticklabels(["0%", "2%", "4%", "6%", "8%", "10%", "12%", "14%", "16%", "18%"])
+ax.set_yticklabels(["0%", "2%", "4%", "6%", "8%", "10%", "12%", "14%", "16%", "18%"], fontfamily="Arial")
 ax.set_ylabel("  \n  ")
 
-ax.text(-20, 17, "B", fontsize="x-large", family=["Arial"], fontweight="bold")
+ymin, ymax = ax.get_ylim()
+ax.text(95, ymax*0.95, "B1", fontsize="large", family=["Arial"], fontweight="bold", verticalalignment="top", horizontalalignment="right")
 
+ax.text(50,19, 'Partially-dated clades', family=["Arial"], horizontalalignment="center", fontsize="medium", fontweight="bold")
 
 ########
 
@@ -65,33 +72,36 @@ for i, algo in enumerate(fy):
 
 # ax.set_yscale("log", base=2)
 # ax.set_title("Average across four 100%-dated clades", fontsize="medium")
-ax.legend(loc="upper left", frameon=False)
+ax.legend(loc="upper left", frameon=False, prop={"size":"small", "family":"Arial"})
 ax.set_xlim((0,100))
 ax.set_ylim((0,7))
+ax.set_xticklabels(ax.get_xticklabels(), fontfamily="Arial")
 ax.set_yticks([0, 1, 2, 3, 4, 5, 6, 7])
-ax.set_yticklabels(["0", "1", "2", "3", "4", "5", "6", "7"])
+ax.set_xticklabels(ax.get_xticklabels(), fontfamily="Arial")
+ax.set_yticklabels(["0", "1", "2", "3", "4", "5", "6", "7"], fontfamily="Arial")
 ax.axhline(1, ls='--', lw=1, color="gray")
 # ax.set_xlabel("Percentage of internal nodes interpolated")
-ax.set_ylabel("Mean pendant edge length relative to EQS-LS\n(Myr divided by initial value for EQS-LS)", fontsize="small")
+ax.set_ylabel(r"$\mathbf{Mean\ pendant\ edge\ length}$" + "\n(relative to EQS-LS,\nMyr divided by initial value for EQS-LS)", fontsize="x-small", fontfamily="Arial")
 
-ax.text(-25, 6.5, "C", fontsize="x-large", family=["Arial"], fontweight="bold")
-# ax.axvspan(0, low, alpha=0.08, color="blue")
-# ax.axvspan(high, 100, alpha=0.15, color="orange")
+ymin, ymax = ax.get_ylim()
+ax.text(95, ymax*0.95, "A2", fontsize="large", family=["Arial"], fontweight="bold", verticalalignment="top", horizontalalignment="right")
 
 
 ax = fig.add_subplot(3,2,4)
 for i, algo in enumerate(cy):
     ax.plot(cx[cmc:], cy[algo][cmc:], '-', label=algos[i])
 
-ax.legend(loc="upper left", frameon=False)
+ax.legend(loc="upper left", frameon=False, prop={"size":"small", "family":"Arial"})
 ax.set_xlim((0,100))
 ax.set_ylim((0,7))
+ax.set_xticklabels(ax.get_xticklabels(), fontfamily="Arial")
 ax.set_yticks([0, 1, 2, 3, 4, 5, 6, 7])
-ax.set_yticklabels(["0", "1", "2", "3", "4", "5", "6", "7"])
+ax.set_yticklabels(["0", "1", "2", "3", "4", "5", "6", "7"], fontfamily="Arial")
 ax.axhline(1, ls='--', lw=1, color="gray")
 ax.set_ylabel("  \n  ")
 
-ax.text(-16, 6.5, "D", fontsize="x-large", family=["Arial"], fontweight="bold")
+ymin, ymax = ax.get_ylim()
+ax.text(95, ymax*0.95, "B2", fontsize="large", family=["Arial"], fontweight="bold", verticalalignment="top", horizontalalignment="right")
 
 
 ########
@@ -108,36 +118,39 @@ ax = fig.add_subplot(3,2,5)
 for i, algo in enumerate(fy):
     ax.plot(fx[fmc:], fy[algo][fmc:], '-', label=algos[i])
 
-ax.legend(loc="upper left", frameon=False)
+ax.legend(loc="upper left", frameon=False, prop={"size":"small", "family":"Arial"})
 ax.set_xlim((0,100))
 ax.set_ylim((0,11))
+ax.set_xticklabels(ax.get_xticklabels(), fontfamily="Arial")
 ax.set_yticks([0, 2, 4, 6, 8, 10])
-ax.set_yticklabels(["0", "2", "4", "6", "8", "10"])
+ax.set_yticklabels(["0", "2", "4", "6", "8", "10"], fontfamily="Arial")
 ax.axhline(1, ls='--', lw=1, color="gray")
-ax.set_xlabel("Percentage of internal nodes interpolated")
-ax.set_ylabel("Median pendant edge length relative to EQS-LS\n(Myr divided by initial value for EQS-LS)", fontsize="small")
+ax.set_xlabel("Percentage of internal nodes interpolated", fontsize="medium", fontfamily="Arial")
+ax.set_ylabel(r"$\mathbf{Median\ pendant\ edge\ length}$" + "\n(relative to EQS-LS,\nMyr divided by initial value for EQS-LS)", fontsize="x-small", fontfamily="Arial")
 
-ax.text(-25, 10, "E", fontsize="x-large", family=["Arial"], fontweight="bold")
+ymin, ymax = ax.get_ylim()
+ax.text(95, ymax*0.95, "A3", fontsize="large", family=["Arial"], fontweight="bold", verticalalignment="top", horizontalalignment="right")
 
 
 ax = fig.add_subplot(3,2,6)
 for i, algo in enumerate(cy):
     ax.plot(cx[cmc:], cy[algo][cmc:], '-', label=algos[i])
 
-ax.legend(loc="upper left", frameon=False)
+ax.legend(loc="upper left", frameon=False, prop={"size":"small", "family":"Arial"})
 ax.set_xlim((0,100))
 ax.set_ylim((0,11))
+ax.set_xticklabels(ax.get_xticklabels(), fontfamily="Arial")
 ax.set_yticks([0, 2, 4, 6, 8, 10])
-ax.set_yticklabels(["0", "2", "4", "6", "8", "10"])
+ax.set_yticklabels(["0", "2", "4", "6", "8", "10"], fontfamily="Arial")
 ax.axhline(1, ls='--', lw=1, color="gray")
-ax.set_xlabel("Percentage of internal nodes interpolated")
+ax.set_xlabel("Percentage of internal nodes interpolated", fontsize="medium", fontfamily="Arial")
 ax.set_ylabel("  \n  ")
 
-ax.text(-16, 10, "F", fontsize="x-large", family=["Arial"], fontweight="bold")
-
+ymin, ymax = ax.get_ylim()
+ax.text(95, ymax*0.95, "B3", fontsize="large", family=["Arial"], fontweight="bold", verticalalignment="top", horizontalalignment="right")
 
 fig.tight_layout()
-fig.savefig("figure_interp_compare.svg")
-fig.savefig("figure_interp_compare.tif", dpi=300)
+fig.savefig("figure_interp_compare_narrow.svg")
+fig.savefig("figure_interp_compare_narrow.tif", dpi=300)
 
 pylab.close()

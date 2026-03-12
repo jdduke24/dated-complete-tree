@@ -1,3 +1,33 @@
+# BSD 3-Clause License
+
+# Copyright (c) 2025, Jonathan David Duke
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 import gc
 import ete3
 import numpy as np
@@ -6,60 +36,61 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def num_desc_leaves(parent):
-    if parent.is_leaf():
-        parent.add_feature("desc_leaves", 1)
+def label_desc_leaves(parent):
+    """Label each node with the number of leaf nodes below it."""
+
+    if parent.is_leaf:
+        parent.add_prop("num_leaves", 1)
         return 1
     else:
         leaves = 0
         for child in parent.children:
-            leaves += num_desc_leaves(child)
-        parent.add_feature("desc_leaves", leaves)
+            leaves += label_desc_leaves(child)
+        parent.add_prop("num_leaves", leaves)
         return leaves
 
 
-def accumulate_ed_scores(parent, running_sum, all_scores, get_dict=True, root=True):
-    if not root:
-        running_sum += parent.dist/parent.desc_leaves
+def compute_ed_scores(parent, scores_dict=None, running_sum=None, root=True):
+    """Recursive function to accumulate ED scores across the tree, i.e. starting at the root,
+    sum up branch lengths weighted by 1/the number of descendant leaves. Assumes that
+    all nodes have a "num_leaves" attribute; if not then call label_desc_leaves() first.
+    Assumes tree has branch lengths, not just dates."
+    """
 
-    parent.add_feature("ed_score", running_sum)
+    if root:
+        running_sum = 0
+    else:
+        running_sum += parent.dist/parent.props["num_leaves"]
 
-    if parent.is_leaf() and get_dict:
-        all_scores[(parent.name, parent.domain, parent.kingdom, parent.phylum, parent.clas, parent.order, parent.family)] = running_sum
+    parent.add_prop("ed_score", running_sum)
+
+    if parent.is_leaf and scores_dict is not None:
+        scores_dict[(parent.name,
+                    parent.props["domain"],
+                    parent.props["kingdom"],
+                    parent.props["phylum"],
+                    parent.props["clas"],
+                    parent.props["order"],
+                    parent.props["family"])] = running_sum
     else:
         for child in parent.children:
-            accumulate_ed_scores(child, running_sum, all_scores, get_dict, False)
+            compute_ed_scores(child, scores_dict, running_sum, False)
 
 
-def get_ed_scores(dated_tre, get_dict=True):
-    # first, compute branch lengths
-    for node in dated_tre.traverse():
-        if node.up:
-            if node.is_leaf():
-                this_date = 0
-            else:
-                this_date = node.date
+def append_ed_scores(dated_tre, existing_scores):
+    """Compute ED scores for the dated_tre, and add the score for each species to
+    the dictionary existing_scores. The dictionary is keyed on leaf names, e.g. for the
+    Open Tree the keys will be of the form Genus_name_ott1234, and the values
+    are a list of ED scores for the species. Assumes tree has branch lengths.
+    """
 
-            parent_date = node.up.date
-
-            node.dist = parent_date - this_date
-
-    # then, label each node with the number of leaves below it
-    num_desc_leaves(dated_tre)
-
-    # finally, recurse through tree computing ED scores
-    if get_dict:
-        all_scores = {}
-        accumulate_ed_scores(dated_tre, 0, all_scores, True)
-
-        return all_scores
-    else:
-        accumulate_ed_scores(dated_tre, 0, {}, False)
-
-
-def add_ed_scores(dated_tre, existing_scores):
     logger.info("Computing ED scores.")
-    new_scores = get_ed_scores(dated_tre)
+    if "num_leaves" not in dated_tre.props:
+        label_desc_leaves(dated_tre)
+
+    new_scores = {}
+    compute_ed_scores(dated_tre, 0, new_scores, True)
+
     for key in new_scores:
         if key not in existing_scores:
             existing_scores[key] = []
@@ -91,23 +122,26 @@ def write_ed_scores(filename, scores):
     fout.close()
 
 
-def compute_pd(parent):
+def compute_pd(parent, root_call=True):
     """Compute total PD below each node. Assume the tree has branch lengths."""
     pd = 0
     for child in parent.children:
-        pd += compute_pd(child)
+        pd += compute_pd(child, False)
 
-    parent.add_feature("pd", pd)
+    parent.add_prop("pd", pd)
 
-    return pd + parent.dist
+    if root_call:
+        return pd
+    else:
+        return pd + parent.dist
 
 
 def save_pd_for_clades(tre, pd_clades, pd_dict, dates_dict, spp_dict):
     for node in tre.traverse():
         if node.name in pd_clades:
-            pd_dict[node.name].append(node.pd)
-            dates_dict[node.name].append(node.date)
-            spp_dict[node.name].append(len(node.get_leaves()))
+            pd_dict[node.name].append(node.props["pd"])
+            dates_dict[node.name].append(node.props["date"])
+            spp_dict[node.name].append(len(node))
 
 
 def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
@@ -161,6 +195,328 @@ def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
     fout.close()
 
 
+def assign_iucn_status(tre, iucn_filename="config/latest_iucn_2025.csv"):
+    import csv
+
+    iucn_lookup = {}
+    with open(iucn_filename, newline='') as csvfile:
+        rdr = csv.reader(csvfile)
+        for idx, line in enumerate(rdr):
+            if idx == 0:
+                # first line has column headings
+                continue
+            iucn_lookup[int(line[0])] = line[1]
+
+    for node in tre.leaves():
+        name_parts = node.name.split('_')
+        ottid = int(name_parts[-1][3:])
+
+        if ottid in iucn_lookup:
+            status = iucn_lookup[ottid]
+            if status == "LR/nt" or status == "LR/cd":
+                status = "NT"
+            if status == "LR/lc":
+                status = "LC"
+
+            node.add_prop("iucn_status", status)
+
+
+def assign_extinction_risks(tre, rng=None, lookup_table="config/p_extinction.csv", randomise_risk=False, missing_value=None):
+    """Add extinction probabilities to leaves in the tree. Assumes iucn_status is labelled
+    on the leaves in the tree.
+    If randomise_risk=True, draw an extinction risk from the distribution rather than using the median.
+    If missing_value is not None, use the value given instead of drawing a random value.
+    """
+
+    import csv
+
+    pext_lookup = {"ALL": [[], None]}
+
+    with open(lookup_table, newline='') as csvfile:
+        rdr = csv.reader(csvfile)
+        for idx, line in enumerate(rdr):
+            if idx == 0:
+                # first line has column headings
+                continue
+            if line[0] not in pext_lookup:
+                pext_lookup[line[0]] = [[], None]
+
+            pext_lookup[line[0]][0].append(float(line[1]))
+            pext_lookup['ALL'][0].append(float(line[1]))
+
+    for key in pext_lookup:
+        pext_lookup[key][1] = np.median(pext_lookup[key][0])
+
+    for leaf in tre.leaves():
+        if "iucn_status" in leaf.props and leaf.props["iucn_status"] in pext_lookup:
+            status = leaf.props["iucn_status"]
+            if randomise_risk:
+                # pick value from distribution
+                random_idx = rng.integers(len(pext_lookup[status][0]))
+                risk = pext_lookup[status][0][random_idx]
+            else:
+                # use median
+                risk = pext_lookup[status][1]
+        else:
+            if missing_value is not None:
+                risk = missing_value
+            else:
+                random_idx = rng.integers(len(pext_lookup["ALL"][0]))
+                risk = pext_lookup["ALL"][0][random_idx]
+
+        leaf.add_prop("pext", risk)
+
+
+def compute_edge2_scores(tre, scores_dict=None):
+    """Compute ED2 and EDGE2 scores for the input tre. Assumes each leaf node has a property "pext" which
+    contains its extinction probability. Leaf nodes will be labelled with properties "ed2_score" and "edge2_score"
+    containing their scores.
+    """
+
+    # recursively compute and label the products of extinction risks below each internal node
+    def label_pext_products(parent):
+        if parent.is_leaf:
+            return parent.props["pext"]
+        else:
+            product = 1
+
+            for child in parent.children:
+                product *= label_pext_products(child)
+
+            parent.add_prop("pext_product", product)
+
+            return product
+
+    label_pext_products(tre)
+
+    # then push those products down the tree, multiplying them by branch lengths. For a leaf node we compute
+    # ED2 by taking the terminal branch length and adding (sum of products above / own extinction risk)
+    for node in tre.traverse(strategy="preorder"):
+        if node.is_leaf:
+            node.add_prop("ed2_score", node.dist + node.up.props["ed2_intermediate"]/node.props["pext"])
+            node.add_prop("edge2_score", node.props["pext"] * node.props["ed2_score"])
+
+            if scores_dict is not None:
+                key = (node.props["domain"] if node.props["domain"] is not None else "no_domain",
+                       node.props["kingdom"] if node.props["kingdom"] is not None else "no_kingdom",
+                       node.props["phylum"] if node.props["phylum"] is not None else "no_phylum",
+                       node.name,
+                       node.props["iucn_status"] if "iucn_status" in node.props else "No status")
+
+                scores_dict.setdefault(key,[[], [], []])[0].append(node.props["edge2_score"])
+                scores_dict[key][1].append(node.props["ed2_score"])
+                scores_dict[key][2].append(node.props["pext"])
+        else:
+            if node is tre:
+                if node.dist is None:
+                    node.add_prop("ed2_intermediate", 0)
+                else:
+                    node.add_prop("ed2_intermediate", node.dist * node.props["pext_product"])
+            else:
+                node.add_prop("ed2_intermediate", node.up.props["ed2_intermediate"] + node.dist * node.props["pext_product"])
+
+
+def write_edge2_scores(filename, scores_dict, per_phylum=1e10):
+    """Write out the distributions of EDGE2 scores, as well as ED2 and extinction probabilities. The species will be listed in
+    order of mean EDGE2 score, largest first.
+    The per_phylum=N parameter will limit the output to the top N species per phylum by mean EDGE2 score.
+    """
+
+    keys = [(key[0], key[1], key[2], -np.mean(scores_dict[key][0]), key[3], key[4]) for key in scores_dict]
+    keys.sort()
+
+    dict_to_write = {}
+
+    current_key = None
+    count = 0
+    for i, sorted_key in enumerate(keys):
+        key = (sorted_key[0], sorted_key[1], sorted_key[2], sorted_key[4], sorted_key[5])
+        if current_key is None:
+            count = 1
+            dict_to_write[key] = scores_dict[key]
+            current_key = key
+        elif key[0] == current_key[0] and key[1] == current_key[1] and key[2] == current_key[2]:
+            if count < per_phylum:
+                dict_to_write[key] = scores_dict[key]
+                count += 1
+        else:
+            count = 1
+            dict_to_write[key] = scores_dict[key]
+            current_key = key
+
+    with open(filename, "w") as fout:
+        # column headings
+        col_headings =  "leaf_name,iucn_status,domain,kingdom,phylum,N,"
+        col_headings += "EDGE2_mean,min,2.5pct,median,97.5pct,max,"
+        col_headings += "ED2_mean,min,2.5pct,median,97.5pct,max,"
+        col_headings += "p_ext_mean,min,2.5pct,median,97.5pct,max\n"
+        fout.write(col_headings)
+
+        for key in dict_to_write:
+            string_to_write = "{:s},{:s},{:s},{:s},{:s},{:d},"
+            string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f},"
+            string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f},"
+            string_to_write += "{:f},{:f},{:f},{:f},{:f},{:f}\n"
+
+            fout.write(string_to_write.format(key[3],
+                                              key[4],
+                                              key[0],
+                                              key[1],
+                                              key[2],
+                                              len(scores_dict[key][0]),
+                                              np.mean(dict_to_write[key][0]),
+                                              np.min(dict_to_write[key][0]),
+                                              np.percentile(dict_to_write[key][0],2.5),
+                                              np.percentile(dict_to_write[key][0],50),
+                                              np.percentile(dict_to_write[key][0],97.5),
+                                              np.max(dict_to_write[key][0]),
+                                              np.mean(dict_to_write[key][1]),
+                                              np.min(dict_to_write[key][1]),
+                                              np.percentile(dict_to_write[key][1],2.5),
+                                              np.percentile(dict_to_write[key][1],50),
+                                              np.percentile(dict_to_write[key][1],97.5),
+                                              np.max(dict_to_write[key][1]),
+                                              np.mean(dict_to_write[key][2]),
+                                              np.min(dict_to_write[key][2]),
+                                              np.percentile(dict_to_write[key][2],2.5),
+                                              np.percentile(dict_to_write[key][2],50),
+                                              np.percentile(dict_to_write[key][2],97.5),
+                                              np.max(dict_to_write[key][2])
+                                              ))
+
+
+def compute_evoh(tre, rho, include_stem=False):
+    """Compute phi_rho, the total EvoHeritage for a tree give an attrition parameter rho.
+    As rho -> infinity, phi_rho -> species richness.
+    As rho -> 0, phi_rho -> PD
+    """
+
+    def evoh_beta(rho, edge_length):
+        return np.exp(-rho * edge_length)
+
+    def label_evoh_p(parent, rho):
+        if parent.is_leaf:
+            parent.add_prop("evoh_p", 1)
+            return 1
+        else:
+            product = 1
+            for child in parent.children:
+                product *= (1 - label_evoh_p(child, rho) * evoh_beta(rho, child.dist))
+
+            p = 1 - product
+
+            parent.add_prop("evoh_p", p)
+
+            return p
+
+    label_evoh_p(tre, rho)
+
+    phi_rho = 0
+    for node in tre.traverse(strategy="preorder"):
+        if node is tre and not include_stem:
+            # don't include stem - assume we are complete tree and the root node is already the origin of life
+            continue
+
+        phi_rho += (1 - evoh_beta(rho, node.dist)) * node.props["evoh_p"]
+
+    phi_rho /= (1 - np.exp(-rho))
+
+    return phi_rho
+
+
+# def compute_future_evoh(tre, rho, include_stem=False):
+#     """Compute expected future EvoHeritage.
+#     Assumes leaf nodes have been assigned an extinction risk in a "pext" property, for example by using
+#     the assign_extinction_risks() function.
+#     """
+#     def evoh_beta_pext(rho, edge_length, pext):
+#         return (np.exp(-rho * edge_length)) * (1 - pext)
+
+#     def label_evoh_p(parent, rho):
+#         if parent.is_leaf:
+#             p_survival = 1 - parent.props["pext"]
+#             parent.add_prop("evoh_p", p_survival)
+#             return p_survival
+#         else:
+#             product = 1
+#             for child in parent.children:
+#                 if child.is_leaf:
+#                     product *= (1 - label_evoh_p(child, rho) * evoh_beta_pext(rho, child.dist, child.props["pext"]))
+#                 else:
+#                     product *= (1 - label_evoh_p(child, rho) * evoh_beta_pext(rho, child.dist, 0))
+
+#             p = 1 - product
+
+#             parent.add_prop("evoh_p", p)
+
+#             return p
+
+#     label_evoh_p(tre, rho)
+
+#     phi_rho = 0
+#     for node in tre.traverse(strategy="preorder"):
+#         if node is tre and not include_stem:
+#             # don't include stem - assume we are complete tree and the root node is already the origin of life
+#             continue
+
+#         term = (1 - evoh_beta_pext(rho, node.dist, 0)) * node.props["evoh_p"] / (1 - np.exp(-rho))
+#         node.add_prop("evoh_bl", term)
+
+#         phi_rho += term
+
+#     # phi_rho /= (1 - np.exp(-rho))
+
+#     tre.add_prop("rho", rho)
+#     tre.add_prop("phi_rho", phi_rho)
+
+#     return phi_rho
+
+
+def compute_future_evoh(tre, rho, include_stem=False):
+    """Compute expected future EvoHeritage.
+    Assumes leaf nodes have been assigned an extinction risk in a "pext" property, for example by using
+    the assign_extinction_risks() function.
+    """
+    def evoh_beta(rho, edge_length):
+        return (np.exp(-rho * edge_length))
+
+    def label_evoh_p(parent, rho):
+        if parent.is_leaf:
+            p_survival = 1 - parent.props["pext"]
+            parent.add_prop("evoh_p", p_survival)
+            return p_survival
+        else:
+            product = 1
+            for child in parent.children:
+                product *= (1 - label_evoh_p(child, rho) * evoh_beta(rho, child.dist))
+
+            p = 1 - product
+
+            parent.add_prop("evoh_p", p)
+
+            return p
+
+    label_evoh_p(tre, rho)
+
+    phi_rho = 0
+    for node in tre.traverse(strategy="preorder"):
+        if node is tre and not include_stem:
+            # don't include stem - assume we are complete tree and the root node is already the origin of life
+            continue
+
+        term = (1 - evoh_beta(rho, node.dist)) * node.props["evoh_p"] / (1 - np.exp(-rho))
+        node.add_prop("evoh_bl", term)
+
+        phi_rho += term
+
+    # phi_rho /= (1 - np.exp(-rho))
+
+    tre.add_prop("rho", rho)
+    tre.add_prop("phi_rho", phi_rho)
+
+    return phi_rho
+
+
 def compute_gamma(tre):
     """Gamma statistic from Pybus & Harvey (2000). Will be normally distributed with mean 0 for
     a tree with branch lengths that fit a constant-rate pure birth model.
@@ -170,8 +526,8 @@ def compute_gamma(tre):
 
     dates_list = []
     for node in tre.traverse():
-        if node.date > 0:
-            dates_list.append(node.date)
+        if node.props["date"] > 0:
+            dates_list.append(node.props["date"])
 
     dates_list.sort(reverse=True)
 
@@ -180,7 +536,7 @@ def compute_gamma(tre):
         g.append(dates_list[i-1] - dates_list[i])
     g.append(dates_list[-1])
 
-    n = len(tre.get_leaves())
+    n = len(tre)
 
     T = 0
     for j in range(2, n+1):
@@ -239,11 +595,12 @@ def date_labelling_guo(parent):
     """Recurse in postorder through the tree, labelling each node with the oldest date below it
     and the path length (number of nodes) to that date.
     Return value is: [oldest date found so far below this node, path length to it]
+    For use in interpolation algorithm from Guo et al. (2025).
     """
-    if parent.is_leaf():
-        if parent.date != 0:
+    if parent.is_leaf:
+        if parent.props["date"] != 0:
             print("Leaf node with non-zero date")
-        oldest_paths = [[parent.date, 1]]
+        oldest_paths = [[parent.props["date"], 1]]
         parent.oldest_paths = oldest_paths
     else:
         oldest_paths = []
@@ -252,35 +609,39 @@ def date_labelling_guo(parent):
             for path in child_paths:
                 oldest_paths.append(path)
 
-        if parent.date is None:
+        if parent.props["date"] is None:
             parent.oldest_paths = oldest_paths
             for path in oldest_paths:
                 path[1] += 1
         else:
-            oldest_paths = [[parent.date, 1]]
+            oldest_paths = [[parent.props["date"], 1]]
             parent.oldest_paths = oldest_paths
 
     return oldest_paths
 
 
 def compute_ed_scores_guo(parent, ancestral_date, root=True):
+    """Implementation of ED interpolation algorithm from Guo et al. (2025)."""
+
     ed_scores = []
 
     if not root:
         for path in parent.oldest_paths:
             if path[1] != 0:
-                ed_scores.append(((ancestral_date-path[0])/path[1]) / parent.desc_leaves)
+                ed_scores.append(((ancestral_date-path[0])/path[1]) / parent.props["desc_leaves"])
 
-    parent.add_feature("ed_scores_guo", ed_scores)
+    parent.add_prop("ed_scores_guo", ed_scores)
 
     for child in parent.children:
-        if parent.date:
-            compute_ed_scores_guo(child, parent.date, False)
+        if parent.props["date"]:
+            compute_ed_scores_guo(child, parent.props["date"], False)
         else:
             compute_ed_scores_guo(child, ancestral_date, False)
 
 
 def sum_ed_scores_guo(parent, root=True):
+    """Compute PD by summing ED computed my method from Guo et al. (2025)."""
+
     i = 0
     if not root:
         for child in parent.children:
@@ -302,11 +663,11 @@ def lineages_through_time(tre):
     dates_list = []
     nonimputed_dates = []
     for node in tre.traverse():
-        if node.date > 0:
-            dates_list.append((node.date, len(node.children)-1))
+        if node.props["date"] > 0:
+            dates_list.append((node.props["date"], len(node.children)-1))
 
             if not node.imputed_date:
-                nonimputed_dates.append(-node.date)
+                nonimputed_dates.append(-node.props["date"])
 
     dates_list.sort(reverse=True)
 

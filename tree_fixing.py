@@ -1,6 +1,36 @@
+# BSD 3-Clause License
+
+# Copyright (c) 2025, Jonathan David Duke
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 from taxonomy_utils import tx_levels
 from taxonomy_utils import get_genus_and_species
-import ete3
+import ete4
 
 import logging
 logger = logging.getLogger(__name__)
@@ -9,17 +39,17 @@ logger = logging.getLogger(__name__)
 
 def create_node(name, forced_insert=False):
     """Create a new node with metadata."""
-    new_node = ete3.TreeNode(name=name)
+    new_node = ete4.Tree()
+    new_node.name = name
 
-    new_node.tx_level = "mrca"
-    new_node.desc_year = None
-    new_node.ancestral_rank = None
-    new_node.desc_rank = None
+    new_node.props["tx_level"] = "mrca"
+    new_node.props["ancestral_rank"] = None
+    new_node.props["desc_rank"] = None
     if forced_insert:
-        new_node.ph_tx = "FI"
+        new_node.props["ph_tx"] = "FI"
     else:
-        new_node.ph_tx = "IN"
-    new_node.info = None
+        new_node.props["ph_tx"] = "IN"
+    new_node.props["info"] = None
 
     return new_node
 
@@ -27,8 +57,8 @@ def create_node(name, forced_insert=False):
 def insert_node(parent, child, name, forced_insert=False):
     """Insert a new node, with metadata, between the parent and the child."""
     new_node = create_node(name, forced_insert)
-    new_node.ancestral_rank = parent.ancestral_rank
-    new_node.desc_rank = child.desc_rank
+    new_node.props["ancestral_rank"] = parent.props["ancestral_rank"]
+    new_node.props["desc_rank"] = child.props["desc_rank"]
 
     new_node.add_child(child.detach())
     parent.add_child(new_node)
@@ -40,13 +70,13 @@ def insert_node_below(parent, name):
     """Insert a new node below the parent, and move the current children of the parent to the newly-inserted node"""
     new_node = create_node(name)
 
-    new_node.ancestral_rank = parent.ancestral_rank
+    new_node.props["ancestral_rank"] = parent.props["ancestral_rank"]
 
     highest_desc_rank = "species"
     for child in parent.children:
-        if tx_levels[child.tx_level] > tx_levels[highest_desc_rank]:
-            highest_desc_rank = child.tx_level
-    new_node.desc_rank = highest_desc_rank
+        if tx_levels[child.props["tx_level"]] > tx_levels[highest_desc_rank]:
+            highest_desc_rank = child.props["tx_level"]
+    new_node.props["desc_rank"] = highest_desc_rank
 
     orig_children = parent.children.copy()
     for child in orig_children:
@@ -89,7 +119,7 @@ def remove_node_and_parents(node, subspecies_only=True):
         node.detach()
         del node
         if subspecies_only:
-            if parent is not None and tx_levels[parent.tx_level] < tx_levels["species"]:
+            if parent is not None and tx_levels[parent.props["tx_level"]] < tx_levels["species"]:
                 remove_node_and_parents(parent, subspecies_only)
         else:
             remove_node_and_parents(parent, subspecies_only)
@@ -105,10 +135,10 @@ def remove_subspecies(tre, rng):
     # Prune away anything below species
     species_nodes = []
     species_names = set()
-    for node in tre.traverse():
-        if tx_levels[node.tx_level] == tx_levels["species"]:
+    for node in tre.traverse(strategy="preorder"):
+        if tx_levels[node.props["tx_level"]] == tx_levels["species"]:
             species_nodes.append(node)
-            species_names.add(node.species_name)
+            species_names.add(node.props["species_name"])
 
     for node in species_nodes:
         if len(node.children) > 0:
@@ -118,16 +148,16 @@ def remove_subspecies(tre, rng):
     # Deal with remaining nodes of rank below species.
     # First get lists of such nodes, in dictionaries where keys are the species names.
     subsp_dict = {}
-    for node in tre.traverse():
-        if (node.tx_level == "no rank - terminal" or
-                node.tx_level == "subspecies" or
-                node.tx_level == "varietas" or
-                node.tx_level == "variety" or
-                node.tx_level == "forma" or
-                node.tx_level == "infraspecificname"):
-            if node.species_name not in subsp_dict:
-                subsp_dict[node.species_name] = []
-            subsp_dict[node.species_name].append(node)
+    for node in tre.traverse(strategy="preorder"):
+        if (node.props["tx_level"] == "no rank - terminal" or
+                node.props["tx_level"] == "subspecies" or
+                node.props["tx_level"] == "varietas" or
+                node.props["tx_level"] == "variety" or
+                node.props["tx_level"] == "forma" or
+                node.props["tx_level"] == "infraspecificname"):
+            if node.props["species_name"] not in subsp_dict:
+                subsp_dict[node.props["species_name"]] = []
+            subsp_dict[node.props["species_name"]].append(node)
 
 
     # For other sub-species ranks:
@@ -144,10 +174,10 @@ def remove_subspecies(tre, rng):
 
             # 1. only one node has this species name, so make that a species
             if len(subsp_dict[sp]) == 1:
-                logger.info("Node %s kept and promoted to species from %s because it is the only example of species %s." % (subsp_dict[sp][0].name, subsp_dict[sp][0].tx_level, sp))
-                subsp_dict[sp][0].tx_level = "species (promoted)"
-                subsp_dict[sp][0].ancestral_rank = "species (promoted)"
-                subsp_dict[sp][0].desc_rank = "species (promoted)"
+                logger.info("Node %s kept and promoted to species from %s because it is the only example of species %s." % (subsp_dict[sp][0].name, subsp_dict[sp][0].props["tx_level"], sp))
+                subsp_dict[sp][0].props["tx_level"] = "species (promoted)"
+                subsp_dict[sp][0].props["ancestral_rank"] = "species (promoted)"
+                subsp_dict[sp][0].props["desc_rank"] = "species (promoted)"
 
                 continue
 
@@ -167,10 +197,10 @@ def remove_subspecies(tre, rng):
                     nm_parts = nm.split('_')[:-1]
 
                 if len(nm_parts) > 2 and nm_parts[1] == nm_parts[2]:
-                    logger.info("Node %s kept and promoted to species from %s based on repetition of species name." % (subsp_dict[sp][i].name, subsp_dict[sp][i].tx_level))
-                    subsp_dict[sp][i].tx_level = "species (promoted)"
-                    subsp_dict[sp][i].ancestral_rank = "species (promoted)"
-                    subsp_dict[sp][i].desc_rank = "species (promoted)"
+                    logger.info("Node %s kept and promoted to species from %s based on repetition of species name." % (subsp_dict[sp][i].name, subsp_dict[sp][i].props["tx_level"]))
+                    subsp_dict[sp][i].props["tx_level"] = "species (promoted)"
+                    subsp_dict[sp][i].props["ancestral_rank"] = "species (promoted)"
+                    subsp_dict[sp][i].props["desc_rank"] = "species (promoted)"
 
                     sp_found = i
                     break
@@ -178,10 +208,10 @@ def remove_subspecies(tre, rng):
             # 3. finally, if there wasn't a good reason to keep a particular node from the duplicates, pick one at random to keep and promote it to species
             if sp_found is None:
                 keep = subsp_dict[sp][rng.integers(len(subsp_dict[sp]))]
-                logger.info("Node %s kept and promoted to species from %s based on random choice." % (keep.name, keep.tx_level))
-                keep.tx_level = "species (promoted)"
-                keep.ancestral_rank = "species (promoted)"
-                keep.desc_rank = "species (promoted)"
+                logger.info("Node %s kept and promoted to species from %s based on random choice." % (keep.name, keep.props["tx_level"]))
+                keep.props["tx_level"] = "species (promoted)"
+                keep.props["ancestral_rank"] = "species (promoted)"
+                keep.props["desc_rank"] = "species (promoted)"
             else:
                 keep = subsp_dict[sp][i]
 
@@ -198,8 +228,8 @@ def remove_subspecies(tre, rng):
 def impute_species_into_empty_taxa(tre):
     """Finds empty higher-than-species taxa, and imputes a representative random species into them."""
     new_parents = []
-    for node in tre.traverse():
-        if node.is_leaf() and tx_levels[node.tx_level] != tx_levels["species"]:
+    for node in tre.traverse(strategy="preorder"):
+        if node.is_leaf and tx_levels[node.props["tx_level"]] != tx_levels["species"]:
             new_parents.append(node)
 
     for node in new_parents:
@@ -211,22 +241,22 @@ def impute_species_into_empty_taxa(tre):
 
         new_node = create_node(sp_name)
         genus, species = get_genus_and_species(sp_name)
-        new_node.add_feature("genus_name", genus)
-        new_node.add_feature("species_name", species)
-        new_node.tx_level = "species (imputed)"
-        new_node.ph_tx = "IM"
+        new_node.add_prop("genus_name", genus)
+        new_node.add_prop("species_name", species)
+        new_node.props["tx_level"] = "species (imputed)"
+        new_node.props["ph_tx"] = "IM"
 
         node.add_child(new_node)
 
-        logger.info("Added representative species %s as a child of %s node %s. %s %s" % (sp_name, node.tx_level, node.name, genus, species))
+        logger.info("Added representative species %s as a child of %s node %s. %s %s" % (sp_name, node.props["tx_level"], node.name, genus, species))
 
 
 def remove_nonspecies_leaves(tre):
     """Remove any leaf nodes that are of rank above species, e.g. empty genera."""
     to_remove = []
-    for node in tre.traverse():
-        if node.is_leaf() and tx_levels[node.tx_level] != tx_levels["species"]:
-            logger.info("Non-species leaf %s removed, rank %s, %s." % (node.name, node.tx_level, node.ph_tx))
+    for node in tre.traverse(strategy="preorder"):
+        if node.is_leaf and tx_levels[node.props["tx_level"]] != tx_levels["species"]:
+            logger.info("Non-species leaf %s removed, rank %s, %s." % (node.name, node.props["tx_level"], node.props["ph_tx"]))
             to_remove.append(node)
 
     for node in to_remove:
@@ -236,7 +266,7 @@ def remove_nonspecies_leaves(tre):
 def key_to_node(key):
     if type(key) is tuple:
         return key[0]
-    elif type(key) is ete3.coretype.tree.TreeNode:
+    elif type(key) is ete4.core.tree.Tree:
         return key
     else:
         return None
@@ -275,22 +305,22 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
         for i in inserts:
             node_to_move = tofix_dict[key][0][i]
 
-            if (node_to_move.info != "OTH FIX" or                    # - only OTH FIX nodes might have multiple species from the same genus
-                    tx_levels[node_to_move.tx_level] == tx_levels["no rank"] or        # - nodes of no rank don't have a genus
-                    tx_levels[node_to_move.tx_level] >  tx_levels["species group"] or  # - if it has rank higher than species group, it can't be a species from a genus we have seen before
-                    node_to_move.genus_name not in genera_found):    # - if it is not in the list then we haven't see it, duh
+            if (node_to_move.props["info"] != "OTH FIX" or                    # - only OTH FIX nodes might have multiple species from the same genus
+                    tx_levels[node_to_move.props["tx_level"]] == tx_levels["no rank"] or        # - nodes of no rank don't have a genus
+                    tx_levels[node_to_move.props["tx_level"]] >  tx_levels["species group"] or  # - if it has rank higher than species group, it can't be a species from a genus we have seen before
+                    node_to_move.props["genus_name"] not in genera_found):    # - if it is not in the list then we haven't see it, duh
 
                 # we haven't seen this genus before - so this node can be put in a random place in the backbone
                 backbone_size = len(tofix_dict[key][1])
                 child = tofix_dict[key][1][rng.integers(backbone_size)]
-                if tx_levels[node_to_move.tx_level] == tx_levels["species"]:
-                    genera_found[node_to_move.genus_name] = node_to_move
+                if tx_levels[node_to_move.props["tx_level"]] == tx_levels["species"]:
+                    genera_found[node_to_move.props["genus_name"]] = node_to_move
             else:
                 # this is a species and we have seen its genus before - therefore this is a species in a non-monophyletic genus,
                 # so put this node with the others of the same genus to ensure monophyly
-                child = genera_found[node_to_move.genus_name]
+                child = genera_found[node_to_move.props["genus_name"]]
 
-            if type(key_to_node(key)) == ete3.coretype.tree.TreeNode and child is key_to_node(key):
+            if type(key_to_node(key)) == ete4.core.tree.Tree and child is key_to_node(key):
                 # the "child" chosen is the root node of the group - we want to insert a new node *below* this
                 if len(child.children) < 2:
                     child.add_child(node_to_move)
@@ -313,7 +343,7 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
                 if expand_parent_backbones:
                     for root in tofix_dict[key][2]:
                         for level in tx_levels:
-                            if tx_levels[level] < tx_levels[child.ancestral_rank]:
+                            if tx_levels[level] < tx_levels[child.props["ancestral_rank"]]:
                                 # if this is a backbone for a rank *below* that of the ancestral rank of the new node,
                                 # the new node can be added to this backbone.
                                 # for example, if the new node has ancestral rank family, that could be a potential
@@ -327,7 +357,7 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
             if expand_parent_backbones:
                 for root in tofix_dict[key][2]:
                     for level in tx_levels:
-                        if tx_levels[level] < tx_levels[child.ancestral_rank]:
+                        if tx_levels[level] < tx_levels[child.props["ancestral_rank"]]:
                             # as above
                             if (root, level) in tofix_dict:
                                 tofix_dict[(root,level)][1].append(node_to_move)
@@ -341,7 +371,7 @@ def fix_polyphyly(tofix_dict, rng, expand_parent_backbones=False):
 def fix_polytomy(parent, rng):
     """Fix polytomy directly beneath given parent: choose uniformly at random from possible topologies."""
     if len(parent.children) <= 2:
-        raise("Error: Trying to fix a non-polytomy")
+        raise Exception("Error: Trying to fix a non-polytomy")
 
     # pick which children to move - all but 2
     nodes_to_move = parent.get_children()
@@ -363,8 +393,8 @@ def fix_polytomy(parent, rng):
 
         if new_sibling is parent:
             new_node = create_node("mrcapoly")
-            new_node.ancestral_rank = parent.ancestral_rank
-            new_node.desc_rank = parent.desc_rank
+            new_node.props["ancestral_rank"] = parent.props["ancestral_rank"]
+            new_node.props["desc_rank"] = parent.props["desc_rank"]
             current_children = list(parent.children)
             for child in current_children:
                 new_node.add_child(child.detach())
@@ -377,10 +407,10 @@ def fix_polytomy(parent, rng):
             new_node = insert_node(new_sibling.up, new_sibling, "mrcapoly")
             new_node.add_child(node_to_move)
 
-            if tx_levels[node_to_move.desc_rank] > tx_levels[new_node.desc_rank]:
-                new_node.desc_rank = node_to_move.desc_rank
-            if tx_levels[node_to_move.desc_rank] > tx_levels[new_node.up.desc_rank]:
-                new_node.up.desc_rank = node_to_move.desc_rank
+            if tx_levels[node_to_move.props["desc_rank"]] > tx_levels[new_node.props["desc_rank"]]:
+                new_node.props["desc_rank"] = node_to_move.props["desc_rank"]
+            if tx_levels[node_to_move.props["desc_rank"]] > tx_levels[new_node.up.props["desc_rank"]]:
+                new_node.up.props["desc_rank"] = node_to_move.props["desc_rank"]
 
         possible_siblings.append(new_node)
         possible_siblings.append(node_to_move)
@@ -389,7 +419,7 @@ def fix_polytomy(parent, rng):
 def fix_all_polytomies(tre, rng):
     """Fix at random all polytomies in the tree."""
     polytomies = []
-    for node in tre.traverse(strategy='preorder'):
+    for node in tre.traverse(strategy="preorder"):
         if len(node.children) > 2:
             polytomies.append(node)
 
@@ -397,7 +427,7 @@ def fix_all_polytomies(tre, rng):
         fix_polytomy(node, rng)
 
 
-def delete_one_child_nodes(tre, maintain_branch_lengths=False):
+def delete_one_child_nodes(tre, maintain_branch_lengths=True):
     """Strip out nodes with only one child. If maintain_branch_lengths=True, add the branch length above
     the deleted node to the branch below it.
     """
@@ -412,7 +442,7 @@ def delete_one_child_nodes(tre, maintain_branch_lengths=False):
             tre = tre.children[0]
             tre.detach()
         else:
-            if maintain_branch_lengths:
+            if maintain_branch_lengths and node.children[0].dist and node.dist:
                 node.children[0].dist += node.dist
             node.up.add_child(node.children[0].detach())
             node.detach()
@@ -435,14 +465,14 @@ def strip_birds(tre, ejm_birds_filename="config/OTT_crosswalk_2024.csv"):
             desired_ottids.add(int(line[8]))
 
     aves_root = None
-    for node in tre.iter_search_nodes(name="Aves_ott81461"):
+    for node in tre.search_nodes(name="Aves_ott81461"):
         aves_root = node
         break
 
     to_remove = []
     if aves_root is not None:
-        for node in aves_root.traverse():
-            if tx_levels[node.tx_level] == tx_levels["species"] or tx_levels[node.tx_level] == tx_levels["subspecies"]:
+        for node in aves_root.traverse(strategy="preorder"):
+            if tx_levels[node.props["tx_level"]] == tx_levels["species"] or tx_levels[node.props["tx_level"]] == tx_levels["subspecies"]:
                 nm_parts = node.name.split('_')
                 ottid = int(nm_parts[-1][3:])
                 if ottid not in desired_ottids:
@@ -451,11 +481,11 @@ def strip_birds(tre, ejm_birds_filename="config/OTT_crosswalk_2024.csv"):
                     desired_ottids.remove(ottid)
 
     for node in to_remove:
-        if tx_levels[node.tx_level] == tx_levels["subspecies"]:
+        if tx_levels[node.props["tx_level"]] == tx_levels["subspecies"]:
             remove_node_and_parents(node, subspecies_only=True)
 
     for node in to_remove:
-        if tx_levels[node.tx_level] == tx_levels["species"] and len(node.children) == 0:
+        if tx_levels[node.props["tx_level"]] == tx_levels["species"] and len(node.children) == 0:
             remove_node_and_parents(node, subspecies_only=False)
 
 
@@ -473,14 +503,14 @@ def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
             desired_ottids.add(int(line[1]))
 
     turtles_root = None
-    for node in tre.iter_search_nodes(name="Testudines_ott639666"):
+    for node in tre.search_nodes(name="Testudines_ott639666"):
         turtles_root = node
         break
 
     to_remove = []
     if turtles_root is not None:
-        for node in turtles_root.traverse():
-            if tx_levels[node.tx_level] == tx_levels["species"] or tx_levels[node.tx_level] == tx_levels["subspecies"]:
+        for node in turtles_root.traverse(strategy="preorder"):
+            if tx_levels[node.props["tx_level"]] == tx_levels["species"] or tx_levels[node.props["tx_level"]] == tx_levels["subspecies"]:
                 nm_parts = node.name.split('_')
                 ottid = int(nm_parts[-1][3:])
                 if ottid not in desired_ottids:
@@ -489,11 +519,11 @@ def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
                     desired_ottids.remove(ottid)
 
     for node in to_remove:
-        if tx_levels[node.tx_level] == tx_levels["subspecies"]:
+        if tx_levels[node.props["tx_level"]] == tx_levels["subspecies"]:
             remove_node_and_parents(node, subspecies_only=True)
 
     for node in to_remove:
-        if tx_levels[node.tx_level] == tx_levels["species"] and len(node.children) == 0:
+        if tx_levels[node.props["tx_level"]] == tx_levels["species"] and len(node.children) == 0:
             remove_node_and_parents(node, subspecies_only=False)
 
 
@@ -514,27 +544,27 @@ def fix_taxonomy_ordering(tre, filename="config/taxonomy_fixes.csv"):
                 continue
             if line[2] == "0":
                 node_to_find = None
-                for node in tre.iter_search_nodes(name=line[0]):
+                for node in tre.search_nodes(name=line[0]):
                     node_to_find = node
                     break
                 if node_to_find is None:
                     raise Exception("Node in taxonomy ordering config is not in tree.")
 
-                node.tx_level = "no rank"
+                node.props["tx_level"] = "no rank"
 
             elif line[2] == "1":
                 node_to_find = None
-                for node in tre.iter_search_nodes(name=line[1]):
+                for node in tre.search_nodes(name=line[1]):
                     node_to_find = node
                     break
                 if node_to_find is None:
                     raise Exception("Node in taxonomy ordering config is not in tree.")
 
-                node.tx_level = "no rank"
+                node.props["tx_level"] = "no rank"
 
             if line[2] == "2":
                 node_to_find = None
-                for node in tre.iter_search_nodes(name=line[1]):
+                for node in tre.search_nodes(name=line[1]):
                     node_to_find = node
                     break
                 if node_to_find is None:
@@ -561,14 +591,14 @@ def forced_taxa_moves(tre, filename="config/forced_taxa_moves.csv"):
                 continue
 
             node_to_move = None
-            for node in tre.iter_search_nodes(name=line[0]):
+            for node in tre.search_nodes(name=line[0]):
                 node_to_move = node
                 break
             if node_to_move is None:
                 raise Exception("Node in forced taxa moves config is not in tree.")
 
             sister_node = None
-            for node in tre.iter_search_nodes(name=line[1]):
+            for node in tre.search_nodes(name=line[1]):
                 sister_node = node
                 break
             if sister_node is None:
@@ -578,4 +608,4 @@ def forced_taxa_moves(tre, filename="config/forced_taxa_moves.csv"):
             new_internal_node.add_child(node_to_move.detach())
 
             # pretend this was phylogeny so it doesn't get moved again
-            node_to_move.ph_tx = "PH"
+            node_to_move.props["ph_tx"] = "PH"
