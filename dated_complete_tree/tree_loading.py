@@ -28,7 +28,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from chronosynth import chronogram as cg
 import ete4
 from . import tree_fixing
 from . import tree_dating
@@ -62,6 +61,8 @@ def load_metadata(date_cache="chronosynth_date_info/node_ages.json",
 
     # get all dates from phylesystem studies
     if date_cache is not None:
+        from chronosynth import chronogram as cg
+
         dates = cg.build_synth_node_source_ages(cache_file_path=date_cache, force_reload=force_dates_refresh, force_no_reload=force_no_dates_refresh)
         sources_to_delete = set(["ot_1250@tree2"])
         deletions = []
