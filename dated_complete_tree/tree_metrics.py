@@ -32,6 +32,8 @@ import gc
 import ete3
 import numpy as np
 
+from .taxonomy_utils import open_config_csv
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -195,11 +197,11 @@ def write_pd_dists(filename, pd_dict, dates_dict, spp_dict):
     fout.close()
 
 
-def assign_iucn_status(tre, iucn_filename="config/latest_iucn_2025.csv"):
+def assign_iucn_status(tre, iucn_filename=None):
     import csv
 
     iucn_lookup = {}
-    with open(iucn_filename, newline='') as csvfile:
+    with open_config_csv(iucn_filename, "latest_iucn_2025.csv") as csvfile:
         rdr = csv.reader(csvfile)
         for idx, line in enumerate(rdr):
             if idx == 0:
@@ -221,7 +223,7 @@ def assign_iucn_status(tre, iucn_filename="config/latest_iucn_2025.csv"):
             node.add_prop("iucn_status", status)
 
 
-def assign_extinction_risks(tre, rng=None, lookup_table="config/p_extinction.csv", randomise_risk=False, missing_value=None):
+def assign_extinction_risks(tre, rng=None, lookup_table=None, randomise_risk=False, missing_value=None):
     """Add extinction probabilities to leaves in the tree. Assumes iucn_status is labelled
     on the leaves in the tree.
     If randomise_risk=True, draw an extinction risk from the distribution rather than using the median.
@@ -232,7 +234,7 @@ def assign_extinction_risks(tre, rng=None, lookup_table="config/p_extinction.csv
 
     pext_lookup = {"ALL": [[], None]}
 
-    with open(lookup_table, newline='') as csvfile:
+    with open_config_csv(lookup_table, "p_extinction.csv") as csvfile:
         rdr = csv.reader(csvfile)
         for idx, line in enumerate(rdr):
             if idx == 0:

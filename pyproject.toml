@@ -22,3 +22,7 @@ dependencies = [
 
 [tool.setuptools]
 packages = ["dated_complete_tree"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+dated_complete_tree = ["config/*.csv"]

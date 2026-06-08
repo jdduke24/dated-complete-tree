@@ -28,6 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+from .taxonomy_utils import open_config_csv
 from .taxonomy_utils import tx_levels
 from .taxonomy_utils import get_genus_and_species
 import ete4
@@ -451,12 +452,12 @@ def delete_one_child_nodes(tre, maintain_branch_lengths=True):
     return tre
 
 
-def strip_birds(tre, ejm_birds_filename="config/OTT_crosswalk_2024.csv"):
+def strip_birds(tre, ejm_birds_filename=None):
     import csv
 
     desired_ottids = set()
 
-    with open(ejm_birds_filename, newline='') as csvfile:
+    with open_config_csv(ejm_birds_filename, "OTT_crosswalk_2024.csv") as csvfile:
         rdr = csv.reader(csvfile)
         for idx, line in enumerate(rdr):
             if idx == 0:
@@ -489,12 +490,12 @@ def strip_birds(tre, ejm_birds_filename="config/OTT_crosswalk_2024.csv"):
             remove_node_and_parents(node, subspecies_only=False)
 
 
-def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
+def strip_turtles(tre, turtles_filename=None):
     import csv
 
     desired_ottids = set()
 
-    with open(turtles_filename, newline='') as csvfile:
+    with open_config_csv(turtles_filename, "turtle_checklist_ott.csv") as csvfile:
         rdr = csv.reader(csvfile)
         for idx, line in enumerate(rdr):
             if idx == 0:
@@ -527,7 +528,7 @@ def strip_turtles(tre, turtles_filename="config/turtle_checklist_ott.csv"):
             remove_node_and_parents(node, subspecies_only=False)
 
 
-def fix_taxonomy_ordering(tre, filename="config/taxonomy_fixes.csv"):
+def fix_taxonomy_ordering(tre, filename=None):
     """Adjust the tree to ensure correct taxonomic ordering, using hand-curated config file.
     Type 0: remove the rank from the ancestor node.
     Type 1: remove the rank from the descendant node.
@@ -536,7 +537,7 @@ def fix_taxonomy_ordering(tre, filename="config/taxonomy_fixes.csv"):
 
     import csv
 
-    with open(filename, newline='') as csvfile:
+    with open_config_csv(filename, "taxonomy_fixes.csv") as csvfile:
         rdr = csv.reader(csvfile)
         for idx, line in enumerate(rdr):
             if idx == 0:
@@ -576,14 +577,14 @@ def fix_taxonomy_ordering(tre, filename="config/taxonomy_fixes.csv"):
                 del node_to_find
 
 
-def forced_taxa_moves(tre, filename="config/forced_taxa_moves.csv"):
+def forced_taxa_moves(tre, filename=None):
     """Force some taxa to be sisters of other taxa.
     Initially created to force Eukaryota to be a sister of Archaea.
     """
 
     import csv
 
-    with open(filename, newline='') as csvfile:
+    with open_config_csv(filename, "forced_taxa_moves.csv") as csvfile:
         rdr = csv.reader(csvfile)
         for idx, line in enumerate(rdr):
             if idx == 0:

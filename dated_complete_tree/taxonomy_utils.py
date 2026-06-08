@@ -29,6 +29,20 @@
 
 
 import re
+from importlib.resources import files
+
+
+def open_config_csv(filename, default_basename):
+    """Open a config CSV in text mode with ``newline=''``.
+
+    If ``filename`` is ``None``, open the file ``default_basename`` from the
+    package's bundled ``config/`` directory. Otherwise treat ``filename`` as a
+    user-supplied filesystem path.
+    """
+    if filename is None:
+        return (files(__package__) / "config" / default_basename).open(newline="")
+    return open(filename, newline="")
+
 
 tx_levels = {
                 # need some value for these, though they should be overwritten during loading and annotation depending on
