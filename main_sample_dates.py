@@ -34,11 +34,11 @@ os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Ope
 import sys
 import numpy as np
 
-import tree_loading
-import tree_labelling
-import tree_fixing
-import tree_dating
-import tree_metrics
+from dated_complete_tree import tree_loading
+from dated_complete_tree import tree_labelling
+from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_dating
+from dated_complete_tree import tree_metrics
 
 import logging
 logger = logging.getLogger(__name__)
@@ -120,7 +120,7 @@ tree_dating.assign_dates(whole_tre, dates)
 tree_dating.label_older_descendants(whole_tre)
 tree_dating.dq_date_removal(whole_tre)
 
-import tree_checks
+from dated_complete_tree import tree_checks
 
 tree_checks.check_bifurcating(whole_tre)
 tree_checks.count_subspecies(whole_tre)

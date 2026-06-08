@@ -34,11 +34,11 @@ os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Ope
 import sys
 import numpy as np
 
-import tree_loading
-import tree_labelling
-import tree_fixing
-import tree_dating
-import tree_metrics
+from dated_complete_tree import tree_loading
+from dated_complete_tree import tree_labelling
+from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_dating
+from dated_complete_tree import tree_metrics
 
 import logging
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ tree_fixing.forced_taxa_moves(whole_tre_unmodified)
 for node in whole_tre_unmodified.search_nodes(name="Branchiopoda_ott632175"):
     nd = node
 
-import tree_plotting
+from dated_complete_tree import tree_plotting
 tree_plotting.plot_labels(nd, "branchiopoda.svg")
 
 # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
@@ -145,7 +145,7 @@ tree_plotting.plot_labels(nd, "branchiopoda_dated.svg")
 tree_dating.compute_branch_lengths(whole_tre)
 tree_metrics.compute_pd(whole_tre)
 
-from taxonomy_utils import tx_levels
+from dated_complete_tree.taxonomy_utils import tx_levels
 
 for node in nd.traverse():
     if tx_levels[node.props["tx_level"]] > tx_levels["genus"]:

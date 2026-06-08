@@ -28,8 +28,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from taxonomy_utils import tx_levels
-from taxonomy_utils import get_genus_and_species
+from .taxonomy_utils import tx_levels
+from .taxonomy_utils import get_genus_and_species
 import ete4
 
 import logging

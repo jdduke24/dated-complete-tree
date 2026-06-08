@@ -28,7 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from taxonomy_utils import tx_levels
+from .taxonomy_utils import tx_levels
 import logging
 logger = logging.getLogger(__name__)
 

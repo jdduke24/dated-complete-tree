@@ -34,11 +34,11 @@ os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Ope
 import sys
 import numpy as np
 
-import tree_loading
-import tree_labelling
-import tree_fixing
-import tree_dating
-import tree_metrics
+from dated_complete_tree import tree_loading
+from dated_complete_tree import tree_labelling
+from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_dating
+from dated_complete_tree import tree_metrics
 
 import logging
 logger = logging.getLogger(__name__)

@@ -34,11 +34,11 @@ import gc
 import numpy as np
 import sys
 
-import tree_loading
-import tree_labelling
-import tree_fixing
-import tree_dating
-import tree_metrics
+from dated_complete_tree import tree_loading
+from dated_complete_tree import tree_labelling
+from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_dating
+from dated_complete_tree import tree_metrics
 
 import argparse
 import logging

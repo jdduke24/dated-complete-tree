@@ -30,10 +30,10 @@
 
 from chronosynth import chronogram as cg
 import ete4
-import tree_fixing
-import tree_dating
-from taxonomy_utils import tx_levels
-from taxonomy_utils import get_genus_and_species
+from . import tree_fixing
+from . import tree_dating
+from .taxonomy_utils import tx_levels
+from .taxonomy_utils import get_genus_and_species
 import json
 import re
 

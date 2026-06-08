@@ -4,12 +4,12 @@ os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Ope
 import sys
 import numpy as np
 
-import tree_loading
-import tree_labelling
-import tree_fixing
-import tree_dating
-import tree_metrics
-import tree_checks
+from dated_complete_tree import tree_loading
+from dated_complete_tree import tree_labelling
+from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_dating
+from dated_complete_tree import tree_metrics
+from dated_complete_tree import tree_checks
 
 import logging
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ clades = ['cellular_organisms_ott93302',
 'Bacteria_ott844192']
 
 
-from taxonomy_utils import tx_levels
+from dated_complete_tree.taxonomy_utils import tx_levels
 
 def label_pct_dates(parent):
     if parent.is_leaf:
