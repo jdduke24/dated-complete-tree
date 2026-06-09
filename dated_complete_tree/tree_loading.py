@@ -182,6 +182,11 @@ def build_and_annotate_tree(phylogeny_nodes,
                 tx_level = "species"
             else:
 
+                if ott_uid not in taxa:
+                    logger.warning(f"OTT {ott_uid} missing from taxa, assuming no rank / extant")
+                    print(f"OTT {ott_uid} missing from taxa, assuming no rank / extant")
+                    taxa[ott_uid] = ('no rank', False)
+
                 if ignore_extinct:
                     if taxa[ott_uid][1]:
                         # extinct or extinct_inherited
