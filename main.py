@@ -64,7 +64,7 @@ def generate_trees(args):
                                                               annotations=args.annotations,
                                                               taxonomy=args.taxonomy)
 
-    # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
+    # Create ete4 tree structure for entire Open Tree of Life, with my annotations
     whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa)
 
     tree_fixing.strip_birds(whole_tre_unmodified)

@@ -52,7 +52,7 @@ sys.setrecursionlimit(10000)
 # Load metadata for tree from Open Tree and Chronosynth
 dates, phylogeny_nodes, taxa = tree_loading.load_metadata(force_no_dates_refresh=True)
 
-# Create ETE3 tree structure for entire Open Tree of Life, with my annotations
+# Create ete4 tree structure for entire Open Tree of Life, with my annotations
 whole_tre = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa, tree_filename="trees_bm/birth_model_topo_sample_24.tre", has_branch_lengths=True)
 
 tree_metrics.compute_pd(whole_tre)

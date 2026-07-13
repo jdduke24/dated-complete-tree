@@ -29,7 +29,6 @@
 
 
 import gc
-import ete3
 import numpy as np
 
 import logging
@@ -553,42 +552,6 @@ def compute_gamma(tre):
     gamma = ( (1/(n-2) * tmpsum) - T/2 ) / ( T * np.sqrt(1 / (12*(n-2))) )
 
     return gamma
-
-
-def compute_rf_distances(output_folder, output_tree_filename, n):
-    logger.info("Computing Robinson-Foulds distances.")
-
-    fout = open("%s/rf_distances.csv" % (output_folder),"w")
-
-    results = []
-    for i in range(n):
-        tre1 = ete3.Tree(open("%s/%s_%d.tre" % (output_folder, output_tree_filename, i+1),"r").read(),format=1)
-        results.append([])
-        for j in range(n):
-            if j > i:
-                logger.info("Computing RF distance between tree %d and tree %d." % (i+1,j+1))
-                tre2 = ete3.Tree(open("%s/%s_%d.tre" % (output_folder, output_tree_filename, j+1),"r").read(),format=1)
-                x = tre1.robinson_foulds(tre2)
-                results[-1].append(x[0])
-                fout.write("%f" % (x[0]))
-                del tre2
-                gc.collect()
-            else:
-                results[-1].append(None)
-                if j == i:
-                    fout.write("0")
-                else:
-                    fout.write("%f" % (results[j][i]))
-
-            if j != n-1:
-                fout.write(",")
-            else:
-                fout.write("\n")
-
-        del tre1
-        gc.collect()
-
-    fout.close()
 
 
 def date_labelling_guo(parent):
