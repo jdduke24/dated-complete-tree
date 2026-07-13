@@ -1,21 +1,9 @@
-import os
-os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dated-complete-tree/figures/figure8')
-
-import sys
-import gc
-
-import tree_loading
-import tree_labelling
-import tree_fixing
-import tree_dating
-import tree_plotting
+from dated_complete_tree import tree_loading
+from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_dating
+from dated_complete_tree import tree_plotting
 
 import random
-import numpy as np
-from copy import deepcopy
-import ete3
-
-sys.setrecursionlimit(10000)
 
 
 # Load metadata for tree from Open Tree, Chronosynth and OneZoom
@@ -24,7 +12,7 @@ dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
 test_tre = tree_loading.build_and_annotate_tree(dates,
                                                 phylogeny_nodes,
                                                 taxa,
-                                                tree_filename="../../test_trees/small_dating_tree_2.tre")
+                                                tree_filename="figures/figure9/small_dating_tree_2.tre")
 
 
 test_tre_unmod = test_tre.copy()

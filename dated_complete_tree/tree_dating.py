@@ -117,6 +117,35 @@ def assign_dates(tre, dates, sample_dates=False, rng=None, num_sources=False, us
     # return date_sources
 
 
+def assign_dates_from_file(tre, input_filename=None, delimiter='\t'):
+    """Assign dates to named nodes in the given tree. The input file should be a tab or comma separated file
+    with two columns, no headers, containing node names and their ages. By default, looks for a tab-separated file
+    identical to the 'ages' file used by BLADJ in Phylocom. If no age is given for leaf nodes, they are assigned
+    an age of 0."""
+
+    from dated_complete_tree.taxonomy_utils import open_config_csv
+    import csv
+
+    ages = {}
+
+    with open_config_csv(input_filename, "ages") as csvfile:
+        rdr = csv.reader(csvfile, delimiter=delimiter)
+        for idx, line in enumerate(rdr):
+            ages[line[0]] = float(line[1])
+
+    for node in tre.traverse():
+        if node.name in ages:
+            node.add_prop("date", ages[node.name])
+        else:
+            if node.is_leaf:
+                node.add_prop("date", 0)
+            else:
+                node.add_prop("date", None)
+
+        node.add_prop("imputed_date", False)
+        node.add_prop("imputation_type", 0)
+
+
 def remove_inconsistent_dates(parent, mrad=None):
     """Recurse in preorder through the tree, removing the date info from any nodes that have dates older
     than a date found on an ancestor. (mrad = most recent ancestor date)
@@ -167,13 +196,20 @@ def strip_undated_nodes(tre):
     return stripped_tre
 
 
-def label_older_descendants(parent):
-    """Labels each node with a list of descendant nodes that have dates older than its own."""
+def label_older_descendants(parent, root_call=True, root_date=None):
+    """Labels each node with a list of descendant nodes that have dates older than its own. Removes any
+    dates older than the root date."""
+
+    if root_call:
+        root_date = parent.props["date"]
+    else:
+        if parent.props["date"] and parent.props["date"] > root_date:
+            parent.props["date"] = None
 
     descendants = []
 
     for child in parent.children:
-        child_descendants = label_older_descendants(child)
+        child_descendants = label_older_descendants(child, False, root_date)
         descendants.extend(child_descendants)
         # ignore node if is has no date (None) or a date of 0
         if child.props["date"]:
@@ -217,8 +253,11 @@ def build_dq_dict(tre):
 
 def dq_date_removal(tre):
     """Remove dates from nodes such that as few dates are removed as possible to create a consistent set of dates
-    on the tree.
+    on the tree. The root date is always kept; any date older than the root is removed before the consistency
+    checks begin.
     """
+
+    label_older_descendants(tre)
 
     dq_dict = build_dq_dict(tre)
 
@@ -492,8 +531,7 @@ def compute_branch_lengths(tre, round_numbers=False):
 
 
 def write_tree_with_branch_lengths(tre, filename):
-    """Write out dated tree in Newick format (suitable for OneZoom). Branch lengths rounded
-    to 4 sig figs to save space in the text file."""
+    """Write out dated tree in Newick format."""
     # compute_branch_lengths(tre, round_numbers=False)
 
     from ete4.parser.newick import DIST, NAME

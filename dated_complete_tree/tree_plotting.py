@@ -147,106 +147,6 @@ def plot_labels(input_tre, filename):
     tre.render(filename, tree_style=ts)
 
 
-def plot_figure_fixing(input_tre, filename, name_mrcas=True, info_colors=True, arrows=True):
-    tre = input_tre.copy()
-
-    arrow0 = ete3.ImgFace("arrow0.png", width=10, height=15)
-    arrow1 = ete3.ImgFace("arrow_new_1.png", width=10, height=15)
-    arrow2 = ete3.ImgFace("arrow_new_2.png", width=10, height=15)
-    arrow3 = ete3.ImgFace("arrow_new_3.png", width=10, height=15)
-    arrow4 = ete3.ImgFace("arrow_new_4.png", width=10, height=15)
-    arrow5 = ete3.ImgFace("arrow_new_5.png", width=10, height=15)
-
-    # plot tree
-    for node in tre.traverse(strategy="preorder"):
-
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "grey"
-        nstyle["hz_line_color"] = "grey"
-
-        if node.ph_tx == "TX":
-            nstyle["shape"] = "square"
-            nstyle["size"] = 15
-        else:
-            nstyle["shape"] = "circle"
-            nstyle["size"] = 10
-
-        if node.info and node.info != "OTH PARENT":
-            if "GR FIX" in node.info and "Calendulauda" in node.name:
-                nstyle["fgcolor"] = "#65B6F9"
-            elif "OTH FIX" in node.info and "Otocoris" in node.name:
-                nstyle["fgcolor"] = "#12083E"
-            elif "OTH FIX" in node.info and "Colluricinclidae" in node.name:
-                nstyle["fgcolor"] = "#FFD545"
-            elif "OTH FIX" in node.info and "Laphyctes" in node.name:
-                nstyle["fgcolor"] = "#EC803C"
-            elif "NMP FIX" in node.info and "Rhectes" not in node.name:
-                nstyle["fgcolor"] = "#DC2683"
-            else:
-                nstyle["fgcolor"] = "#E0E0E0"
-
-            if arrows:
-                if "GR BKB Calendulauda" in node.info:
-                    node.add_face(arrow1, 0, position="branch-top")
-                else:
-                    node.add_face(arrow0, 0, position="branch-top")
-
-                if ("OTH BKB" in node.info or "OTH EX BKB" in node.info) and "Alaudidae genus" in node.info:
-                    node.add_face(arrow2, 1, position="branch-top")
-                else:
-                    node.add_face(arrow0, 1, position="branch-top")
-
-                if ("NMP BKB" in node.info or "NMP EX BKB" in node.info) and "Mirafra" in node.info:
-                    node.add_face(arrow3, 2, position="branch-top")
-                else:
-                    node.add_face(arrow0, 2, position="branch-top")
-
-                if ("OTH BKB" in node.info or "OTH EX BKB" in node.info) and "Passeriformes family" in node.info:
-                    node.add_face(arrow4, 3, position="branch-top")
-                else:
-                    node.add_face(arrow0, 3, position="branch-top")
-
-                if ("OTH BKB" in node.info or "OTH EX BKB" in node.info) and "Passeriformes genus" in node.info:
-                    node.add_face(arrow5, 4, position="branch-top")
-                else:
-                    node.add_face(arrow0, 4, position="branch-top")
-
-                node.add_face(arrow0, 5, position="branch-top")
-            else:
-                for i in range(6):
-                    node.add_face(arrow0, i, position="branch-top")
-
-        else:
-            nstyle["fgcolor"] = "#E0E0E0"
-
-
-        node.set_style(nstyle)
-
-        if not (tx_levels[node.tx_level] == tx_levels["mrca"] and not name_mrcas):
-            if tx_levels[node.tx_level] == tx_levels["species"]:
-                node.add_face(ete3.TextFace(name_to_simple_name(node.name), fstyle="italic", fsize=10), column=0, position="branch-right")
-            else:
-                # node.add_face(ete3.TextFace(name_to_simple_name(node.name), fsize=9), column=0, position="branch-top")
-                node.add_face(ete3.TextFace("%s\n%s" % (name_to_simple_name(node.name), node.tx_level), fsize=9), column=0, position="branch-bottom")
-                # node.add_face(ete3.TextFace("%s" % (node.tx_level), fsize=9), column=0, position="branch-bottom")
-
-
-    ts = ete3.TreeStyle()
-    ts.margin_right = 80
-    ts.show_leaf_name = False
-    ts.mode ="r"
-    if arrows:
-        ts.branch_vertical_margin = -5
-    else:
-        ts.branch_vertical_margin = -5
-    ts.scale = 100
-    ts.show_scale = False
-
-    tre.render(filename, tree_style=ts)
-
-
 def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True, arrows=True, scale=5):
     tre = input_tre.copy()
 
@@ -385,116 +285,13 @@ def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True,
     tre.render(filename, tree_style=ts, units="in", w=6, dpi=300)
 
 
-def plot_simple(input_tre, filename, name_mrcas=True, info_colors=True, color_GR=True, color_NMP=True, color_OTH=True, fix_node=None, bkb_label=None):
-    tre = input_tre.copy()
-    # plot tree
-    for node in tre.traverse(strategy="preorder"):
-
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "grey"
-        nstyle["hz_line_color"] = "grey"
-
-
-
-        if info_colors:
-            if node.info and node.info != "OTH PARENT":
-                if "GR FIX" in node.info:
-                    nstyle["fgcolor"] = "limegreen" if color_GR else "grey"
-                elif "GR BKB" in node.info:
-                    nstyle["fgcolor"] = "greenyellow" if color_GR else "grey"
-                elif "OTH FIX" in node.info:
-                    if fix_node:
-                        if node.name == fix_node:
-                            nstyle["fgcolor"] = "red" if color_OTH else "grey"
-                            nstyle["shape"] = "sphere"
-                        else:
-                            nstyle["fgcolor"] = "grey"
-                    else:
-                        nstyle["fgcolor"] = "red" if color_OTH else "grey"
-                        nstyle["shape"] = "sphere"
-                elif "OTH BKB 1" in node.info:
-                    if bkb_label:
-                        if bkb_label in node.info:
-                            nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                        else:
-                            nstyle["fgcolor"] = "grey"
-                    else:
-                         nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                elif "OTH BKB 2" in node.info:
-                    if bkb_label:
-                        if bkb_label in node.info:
-                            # nstyle["fgcolor"] = "mediumorchid" if color_OTH else "grey"
-                            nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                        else:
-                            nstyle["fgcolor"] = "grey"
-                    else:
-                         nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                elif "OTH BKB 3" in node.info:
-                    if bkb_label:
-                        if bkb_label in node.info:
-                            # nstyle["fgcolor"] = "darkviolet" if color_OTH else "grey"
-                            nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                        else:
-                            nstyle["fgcolor"] = "grey"
-                    else:
-                         nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                elif "OTH EX BKB" in node.info:
-                    if bkb_label:
-                        if bkb_label in node.info:
-                            # nstyle["fgcolor"] = "darkmagenta" if color_OTH else "grey"
-                            nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                        else:
-                            nstyle["fgcolor"] = "grey"
-                    else:
-                         nstyle["fgcolor"] = "violet" if color_OTH else "grey"
-                elif "NMP FIX" in node.info:
-                    nstyle["fgcolor"] = "deepskyblue" if color_NMP else "grey"
-                elif "NMP BKB" in node.info:
-                    nstyle["fgcolor"] = "turquoise" if color_NMP else "grey"
-                elif "NMP EX BKB" in node.info:
-                    nstyle["fgcolor"] = "royalblue" if color_NMP else "grey"
-            else:
-                nstyle["fgcolor"] = "grey"
-        else:
-            if node.ph_tx == "TX":
-                nstyle["fgcolor"] = "forestgreen"
-            elif node.ph_tx == "PH":
-                nstyle["fgcolor"] = "greenyellow"
-
-        if nstyle["fgcolor"] == "grey":
-            nstyle["size"] = 10
-        else:
-            nstyle["size"] = 20
-        node.set_style(nstyle)
-
-        if not (tx_levels[node.tx_level] == tx_levels["mrca"] and not name_mrcas):
-            if tx_levels[node.tx_level] == tx_levels["species"]:
-                node.add_face(ete3.TextFace(name_to_simple_name(node.name), fstyle="italic"), column=0, position="branch-right")
-                node.add_face(ete3.TextFace(""), column=0, position="branch-bottom")
-            else:
-                node.add_face(ete3.TextFace(name_to_simple_name(node.name) + "      "), column=0, position="branch-top")
-                node.add_face(ete3.TextFace("%s" % (node.tx_level)), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.margin_right=100
-    ts.show_leaf_name = False
-    ts.mode ="r"
-
-    ts.scale = 20
-    ts.show_scale = True
-
-    tre.render(filename, tree_style=ts)
-
-
 def plot_dates(input_tre, filename, show_ranks=False, show_dates=True, show_nodes=True, title=None):
     tre = input_tre.copy()
 
     # look for inconsistent dating, ie where a node has a later date than one of its ancestors
     # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
     def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 1
         nstyle["hz_line_width"] = 1
         nstyle["vt_line_color"] = "gray"
@@ -502,13 +299,13 @@ def plot_dates(input_tre, filename, show_ranks=False, show_dates=True, show_node
 
         next_mrad = mrad
         # if we have a date, check it
-        if node.date:
-            if node.date > mrad:
+        if node.props["date"]:
+            if node.props["date"] > mrad:
                 nstyle["fgcolor"] = "magenta"
                 nstyle["size"] = 30
                 node.set_style(nstyle)
             else:
-                if node.imputed_date:
+                if node.props["imputed_date"]:
                     nstyle["fgcolor"] = "orange"
                     nstyle["size"] = 25
                     node.set_style(nstyle)
@@ -516,9 +313,9 @@ def plot_dates(input_tre, filename, show_ranks=False, show_dates=True, show_node
                     nstyle["fgcolor"] = "red"
                     nstyle["size"] = 20
                     node.set_style(nstyle)
-                next_mrad = node.date
+                next_mrad = node.props["date"]
         else:
-            if node.is_leaf():
+            if node.is_leaf:
                 nstyle["fgcolor"] = "grey"
                 nstyle["size"] = 12
                 node.set_style(nstyle)
@@ -531,12 +328,12 @@ def plot_dates(input_tre, filename, show_ranks=False, show_dates=True, show_node
             nstyle["size"] = 0
             # nstyle["vt_line_width"] = 2
             nstyle["hz_line_width"] = 2
-            if node.imputed_date:
-                if node.imputation_type == 5:
+            if node.props["imputed_date"]:
+                if node.props["imputation_type"] == 5:
                     nstyle["hz_line_color"] = "green"
                     nstyle["vt_line_width"] = 1
                     nstyle["hz_line_width"] = 2
-                elif node.imputation_type > 0:
+                elif node.props["imputation_type"] > 0:
                     nstyle["hz_line_color"] = "crimson"
                     nstyle["vt_line_width"] = 1
                     nstyle["hz_line_width"] = 2
@@ -544,12 +341,12 @@ def plot_dates(input_tre, filename, show_ranks=False, show_dates=True, show_node
                 node.set_style(nstyle)
 
             else:
-                if node.up and node.up.imputed_date:
-                    if node.up.imputation_type == 5:
+                if node.up and node.up.props["imputed_date"]:
+                    if node.up.props["imputation_type"] == 5:
                         nstyle["hz_line_color"] = "green"
                         nstyle["vt_line_width"] = 1
                         nstyle["hz_line_width"] = 2
-                    elif node.up.imputation_type > 0:
+                    elif node.up.props["imputation_type"] > 0:
                         nstyle["hz_line_color"] = "crimson"
                         nstyle["vt_line_width"] = 1
                         nstyle["hz_line_width"] = 2
@@ -561,67 +358,27 @@ def plot_dates(input_tre, filename, show_ranks=False, show_dates=True, show_node
 
     check_date_consistency(tre, 5000)
 
-    # colors = ["#e6194b",
-    #           "#f58231",
-    #           "#3cb44b",
-    #           "#4363d8",
-    #           "#911eb4",
-    #           "#f032e6",
-    #           "#bfef45",
-    #           "#42d4f4",
-    #           "#800000",
-    #           "#a9a9a9",
-    #           "#808000",
-    #           "#469990",
-    #           "#000075",
-    #           "#000000",
-    #           "#9a6324",
-    #           "#fabed4",
-    #           "#aaffc3",
-    #           "#dcbeff",
-    #           "#ffd8b1",
-    #           "#ffe119",
-    #           "#ffd8b1",
-    #           "#fffac8"]
-
-    # sources_dict = {}
-    # color_index = 0
-
     if show_dates:
         for node in tre.traverse(strategy='preorder'):
-            if node.date is not None:
-                # median / mean on top of branch
-                #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
-                if node.imputed_date:
-                    node.add_face(ete3.TextFace("Imp. %.2f" % (node.date)), column=0, position="branch-top")
+            if node.props["date"] is not None:
+                if node.props["imputed_date"]:
+                    node.add_face(ete4.treeview.TextFace("Imp. %.2f" % (node.props["date"])), column=0, position="branch-top")
                 else:
-                    if node.date == 0:
-                        node.add_face(ete3.TextFace("tip"), column=0, position="branch-top")
+                    if node.props["date"] == 0:
+                        node.add_face(ete4.treeview.TextFace("tip"), column=0, position="branch-top")
                     else:
-                        node.add_face(ete3.TextFace("%.2f " % (node.date)), column=0, position="branch-top")
+                        node.add_face(ete4.treeview.TextFace("%.2f " % (node.props["date"])), column=0, position="branch-top")
 
                 if show_ranks:
-                    node.add_face(ete3.TextFace("%s, %s" % (node.name, node.tx_level), fgcolor="black"), column=0, position="branch-bottom")
-
-                # list of dates on bottom of branch, coloured by the phylogeny they came from
-                #for i in range(len(node.date[2])):
-                #    date = node.date[2][i]
-                    # source = node.date[3][i][1]
-                    # if source not in sources_dict:
-                    #     sources_dict[source] = colors[color_index]
-                    #     color_index += 1
-                    #     if color_index > 0 and color_index % len(colors) == 0:
-                    #         color_index = 0
-                    #node.add_face(ete3.TextFace("%.1f    " % date, fgcolor=sources_dict[source]), column=i, position="branch-bottom")
-                #    node.add_face(ete3.TextFace("%.1f    " % date, fgcolor="black"), column=i, position="branch-bottom")
+                    node.add_face(ete4.treeview.TextFace("%s, %s" % (node.name, node.props["tx_level"]), fgcolor="black"), column=0, position="branch-bottom")
             else:
-                node.add_face(ete3.TextFace(" ", fgcolor="black"), column=0, position="branch-top")
-                if node.is_leaf():
-                    node.add_face(ete3.TextFace("tip", fgcolor="black"), column=0, position="branch-bottom")
+                node.add_face(ete4.treeview.TextFace(" ", fgcolor="black"), column=0, position="branch-top")
+                if node.is_leaf:
+                    node.add_face(ete4.treeview.TextFace("tip", fgcolor="black"), column=0, position="branch-bottom")
                 else:
-                    node.add_face(ete3.TextFace(" ", fgcolor="black"), column=0, position="branch-bottom")
+                    node.add_face(ete4.treeview.TextFace(" ", fgcolor="black"), column=0, position="branch-bottom")
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.show_leaf_name = False
     ts.mode ="r"
     ts.scale = 30
@@ -632,7 +389,7 @@ def plot_dates(input_tre, filename, show_ranks=False, show_dates=True, show_node
         ts.complete_branch_lines_when_necessary = False
 
     if title:
-        ts.title.add_face(ete3.faces.TextFace(title, fsize=16), 0)
+        ts.title.add_face(ete4.treeview.faces.TextFace(title, fsize=16), 0)
 
     tre.render(filename, tree_style=ts)
 
@@ -643,7 +400,7 @@ def plot_dates_dq(input_tre, filename):
     # look for inconsistent dating, ie where a node has a later date than one of its ancestors
     # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
     def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 1
         nstyle["hz_line_width"] = 1
         nstyle["vt_line_color"] = "gray"
@@ -676,31 +433,6 @@ def plot_dates_dq(input_tre, filename):
 
     check_date_consistency(tre, 5000)
 
-    colors = ["#e6194b",
-              "#f58231",
-              "#3cb44b",
-              "#4363d8",
-              "#911eb4",
-              "#f032e6",
-              "#bfef45",
-              "#42d4f4",
-              "#800000",
-              "#a9a9a9",
-              "#808000",
-              "#469990",
-              "#000075",
-              "#000000",
-              "#9a6324",
-              "#fabed4",
-              "#aaffc3",
-              "#dcbeff",
-              "#ffd8b1",
-              "#ffe119",
-              "#ffd8b1",
-              "#fffac8"]
-
-    sources_dict = {}
-    color_index = 0
     for node in tre.traverse(strategy='preorder'):
         if node.date is not None:
             # median / mean on top of branch
@@ -717,15 +449,14 @@ def plot_dates_dq(input_tre, filename):
                 if node.date_sources:
                     dt_str += " %s" % node.date_sources[i]
 
-            node.add_face(ete3.TextFace("%s " % (dt_str)), column=0, position="branch-top")
+            node.add_face(ete4.treeview.TextFace("%s " % (dt_str)), column=0, position="branch-top")
 
-            node.add_face(ete3.TextFace("%s\n%s" % (node.name, node.tx_level), fgcolor="black"), column=0, position="branch-bottom")
+            node.add_face(ete4.treeview.TextFace("%s\n%s" % (node.name, node.tx_level), fgcolor="black"), column=0, position="branch-bottom")
 
         else:
-            #node.add_face(ete3.TextFace("", fgcolor="black"), column=0, position="branch-top")
-            node.add_face(ete3.TextFace("%s\n%s" % (node.name, node.tx_level), fgcolor="black"), column=0, position="branch-bottom")
+            node.add_face(ete4.treeview.TextFace("%s\n%s" % (node.name, node.tx_level), fgcolor="black"), column=0, position="branch-bottom")
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.show_leaf_name = False
     ts.mode ="r"
     ts.scale = 100
@@ -760,376 +491,6 @@ def pct_to_color_hex_str(pct):
     first = int(p/16)
     second = int(p % 16)
     return digit_to_hex(first) + digit_to_hex(second)
-
-
-
-def plot_dates_pct(input_tre, filename):
-    tre = input_tre.copy()
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "gray"
-        nstyle["hz_line_color"] = "gray"
-
-        next_mrad = mrad
-        # # if we have a date, check it
-        # if node.date:
-        #     if np.median(node.date) > mrad:
-        #         nstyle["fgcolor"] = "magenta"
-        #         nstyle["size"] = 50
-        #         node.set_style(nstyle)
-        #     else:
-        #         if node.imputed_date:
-        #             nstyle["fgcolor"] = "orange"
-        #             nstyle["size"] = 50
-        #             node.set_style(nstyle)
-        #         else:
-        #             nstyle["fgcolor"] = "red"
-        #             nstyle["size"] = 50
-        #             node.set_style(nstyle)
-        #         next_mrad = np.median(node.date)
-        # else:
-        #     nstyle["fgcolor"] = "blue"
-        #     nstyle["size"] = 50
-        #     node.set_style(nstyle)
-
-        pct_child_dates = node.num_dates/node.child_tree_size
-        pct_child_dates = min(0.8, 10*pct_child_dates)
-        if pct_child_dates < 0.0000001:
-            nstyle["fgcolor"] = "pink"
-        else:
-            nstyle["fgcolor"] = "#" + pct_to_color_hex_str(1-max(pct_child_dates,0.05)) + pct_to_color_hex_str(1-max(pct_child_dates,0.05)) + pct_to_color_hex_str(1-max(pct_child_dates,0.05))
-        nstyle["size"] = 60 * (1-pct_child_dates)
-        node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    for node in tre.traverse(strategy='preorder'):
-        if node.date is not None and not node.imputed_date:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
-
-            if node.date_dist == 0:
-                node.date_dist = [0]
-
-            dt_str = "%.1f" % node.date_dist[0]
-            if node.date_sources:
-                dt_str += " %s" % node.date_sources[0]
-            for i in range(1,len(node.date_dist)):
-                dt_str += "\n%.1f" % node.date_dist[i]
-                if node.date_sources:
-                    dt_str += " %s" % node.date_sources[i]
-
-            node.add_face(ete3.TextFace("%s " % (dt_str)), column=0, position="branch-top")
-
-            node.add_face(ete3.TextFace("%s\n%s\n%.2f%% / %d" % (node.name, node.tx_level, 100*node.num_dates/node.child_tree_size, node.child_tree_size), fgcolor="black"), column=0, position="branch-bottom")
-
-        else:
-            #node.add_face(ete3.TextFace("", fgcolor="black"), column=0, position="branch-top")
-            node.add_face(ete3.TextFace("%s\n%s\n%.2f%% / %d" % (node.name, node.tx_level, 100*node.num_dates/node.child_tree_size, node.child_tree_size), fgcolor="black"), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    ts.mode ="r"
-    ts.scale = .1
-    ts.branch_vertical_margin = 5
-
-    tre.render(filename, tree_style=ts)
-
-
-def plot_dates_compact(input_tre, filename):
-    tre = input_tre.copy()
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "gray"
-        nstyle["hz_line_color"] = "gray"
-
-        next_mrad = mrad
-        # # if we have a date, check it
-        # if node.date:
-        #     if np.median(node.date) > mrad:
-        #         nstyle["fgcolor"] = "magenta"
-        #         nstyle["size"] = 50
-        #         node.set_style(nstyle)
-        #     else:
-        #         if node.imputed_date:
-        #             nstyle["fgcolor"] = "orange"
-        #             nstyle["size"] = 50
-        #             node.set_style(nstyle)
-        #         else:
-        #             nstyle["fgcolor"] = "red"
-        #             nstyle["size"] = 50
-        #             node.set_style(nstyle)
-        #         next_mrad = np.median(node.date)
-        # else:
-        #     nstyle["fgcolor"] = "blue"
-        #     nstyle["size"] = 50
-        #     node.set_style(nstyle)
-
-        pct_child_dates = node.num_dates/node.child_tree_size
-        pct_child_dates = min(1, 10*pct_child_dates)
-        if pct_child_dates < 0.0000001:
-            nstyle["fgcolor"] = "pink"
-        else:
-            nstyle["fgcolor"] = "#" + pct_to_color_hex_str(1-max(pct_child_dates,0.05)) + pct_to_color_hex_str(1-max(pct_child_dates,0.05)) + pct_to_color_hex_str(1-max(pct_child_dates,0.05))
-        #nstyle["size"] = 60 * (1-pct_child_dates)
-        nstyle["size"] = 5
-        node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    for node in tre.traverse(strategy='preorder'):
-        if node.date is not None:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
-
-            if node.date == 0:
-                node.date = [0]
-
-            dt_str = "%.1f" % node.date[0]
-            if node.date_sources:
-                dt_str += " %s" % node.date_sources[0]
-            for i in range(1,len(node.date)):
-                dt_str += "\n%.1f" % node.date[i]
-                if node.date_sources:
-                    dt_str += " %s" % node.date_sources[i]
-
-            node.add_face(ete3.TextFace("%s " % (dt_str)), column=0, position="branch-top")
-
-            node.add_face(ete3.TextFace("%s\n%s\n%.2f%% / %d" % (node.name, node.tx_level, 100*node.num_dates/node.child_tree_size, node.child_tree_size), fgcolor="black"), column=0, position="branch-bottom")
-
-        else:
-            #node.add_face(ete3.TextFace("", fgcolor="black"), column=0, position="branch-top")
-            node.add_face(ete3.TextFace("%s\n%s\n%.2f%% / %d" % (node.name, node.tx_level, 100*node.num_dates/node.child_tree_size, node.child_tree_size), fgcolor="black"), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    ts.mode ="r"
-    ts.scale = 200
-    ts.branch_vertical_margin = 0
-    ts.show_scale = True
-
-    tre.render(filename, tree_style=ts)
-
-
-def plot_dates_circle(input_tre, filename, show_ranks=False, show_pct=False, not_circle=False):
-    tre = input_tre.copy()
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "gray"
-        nstyle["hz_line_color"] = "gray"
-
-        next_mrad = mrad
-        # if we have a date, check it
-        if node.date:
-            if node.date > mrad:
-                nstyle["fgcolor"] = "magenta"
-                nstyle["size"] = 30
-                node.set_style(nstyle)
-            else:
-                if node.imputed_date:
-                    nstyle["fgcolor"] = "orange"
-                    nstyle["size"] = 16
-                    node.set_style(nstyle)
-                else:
-                    nstyle["fgcolor"] = "red"
-                    nstyle["size"] = 16
-                    node.set_style(nstyle)
-                next_mrad = node.date
-        else:
-            nstyle["fgcolor"] = "blue"
-            nstyle["size"] = 15
-            node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    colors = ["#e6194b",
-              "#f58231",
-              "#3cb44b",
-              "#4363d8",
-              "#911eb4",
-              "#f032e6",
-              "#bfef45",
-              "#42d4f4",
-              "#800000",
-              "#a9a9a9",
-              "#808000",
-              "#469990",
-              "#000075",
-              "#000000",
-              "#9a6324",
-              "#fabed4",
-              "#aaffc3",
-              "#dcbeff",
-              "#ffd8b1",
-              "#ffe119",
-              "#ffd8b1",
-              "#fffac8"]
-
-    sources_dict = {}
-    color_index = 0
-    for node in tre.traverse(strategy='preorder'):
-        if node.is_leaf():
-            if node.tx_level != "mrca":
-                node.add_face(ete3.TextFace("%s\n%s" % (name_to_simple_name(node.name), node.tx_level)), column=0, position="branch-right")
-            if node.date is not None:
-                node.add_face(ete3.TextFace("Date: %.1f mya\n%.2f%% of\n%d nodes dated\nPD: %.0f bn yrs" % (node.date, 100*node.num_dates/node.child_tree_size, node.child_tree_size, node.pd/1000), fgcolor="black"), column=0, position="branch-right")
-            else:
-                node.add_face(ete3.TextFace("% "), column=0, position="branch-right")
-        else:
-            if node.tx_level != "mrca":
-                node.add_face(ete3.TextFace("%s\n%s" % (name_to_simple_name(node.name), node.tx_level)), column=0, position="branch-top")
-            if node.date is not None:
-                # node.add_face(ete3.TextFace("%.1f " % (node.date)), column=0, position="branch-bottom")
-                node.add_face(ete3.TextFace("Date: %.1f mya\n%.2f%% of\n%d nodes dated\nPD: %.0f bn yrs" % (node.date, 100*node.num_dates/node.child_tree_size, node.child_tree_size, node.pd/1000), fgcolor="black"), column=0, position="branch-bottom")
-            else:
-                node.add_face(ete3.TextFace("% "), column=0, position="branch-bottom")
-
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    if not_circle:
-        ts.mode = "r"
-    else:
-        ts.mode = "c"
-    ts.scale = .1
-    ts.branch_vertical_margin = 8
-    ts.show_scale = False
-    ts.margin_right = 100
-
-    tre.render(filename, tree_style=ts)
-
-
-def plot_dates_figure(input_tre, filename, show_ranks=False, show_pct=False, log_scale=False):
-    tre = input_tre.copy()
-
-    tre.dist = 0.01
-
-    if log_scale:
-        for node in tre.traverse():
-            node.dist = np.log(node.dist)
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 3
-        nstyle["hz_line_width"] = 3
-        nstyle["vt_line_color"] = "black"
-        nstyle["hz_line_color"] = "black"
-
-        if "mrcaott2ott3973" in node.name:
-            nstyle["bgcolor"] = "palegreen"
-        elif "Metazoa" in node.name:
-            nstyle["bgcolor"] = "lightblue"
-        elif "Fungi" in node.name:
-            nstyle["bgcolor"] = "#CFCFCF"
-
-        next_mrad = mrad
-        # if we have a date, check it
-        if node.date:
-            if node.date > mrad:
-                nstyle["fgcolor"] = "magenta"
-                nstyle["size"] = 30
-                node.set_style(nstyle)
-            else:
-                if node.imputed_date:
-                    nstyle["fgcolor"] = "orange"
-                    nstyle["size"] = 16
-                    node.set_style(nstyle)
-                else:
-                    nstyle["fgcolor"] = "red"
-                    nstyle["size"] = 16
-                    node.set_style(nstyle)
-                next_mrad = node.date
-        else:
-            nstyle["fgcolor"] = "blue"
-            nstyle["size"] = 15
-            node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    colors = ["#e6194b",
-              "#f58231",
-              "#3cb44b",
-              "#4363d8",
-              "#911eb4",
-              "#f032e6",
-              "#bfef45",
-              "#42d4f4",
-              "#800000",
-              "#a9a9a9",
-              "#808000",
-              "#469990",
-              "#000075",
-              "#000000",
-              "#9a6324",
-              "#fabed4",
-              "#aaffc3",
-              "#dcbeff",
-              "#ffd8b1",
-              "#ffe119",
-              "#ffd8b1",
-              "#fffac8"]
-
-    sources_dict = {}
-    color_index = 0
-    for node in tre.traverse(strategy='preorder'):
-        if node.is_leaf():
-            if node.tx_level != "mrca":
-                node.add_face(ete3.TextFace("%s" % (name_to_simple_name(node.name)),fsize=28), column=0, position="branch-right")
-            if node.date is not None:
-                node.add_face(ete3.TextFace("%.1f mya\n%.2f%% of\n%d nodes dated\nPD: %.0f bn yrs" % (
-                    node.date, 100*node.num_dates/node.child_tree_size, node.child_tree_size, node.pd/1000), fsize=28),
-                    column=0, position="branch-right")
-            else:
-                node.add_face(ete3.TextFace("% "), column=0, position="branch-right")
-        else:
-            if node.tx_level != "mrca":
-                node.add_face(ete3.TextFace("%s" % (name_to_simple_name(node.name))), column=0, position="branch-top")
-            if node.date is not None:
-                # node.add_face(ete3.TextFace("%.1f " % (node.date)), column=0, position="branch-bottom")
-                node.add_face(ete3.TextFace("%.1f mya" % (node.date), fgcolor="black"), column=0, position="branch-bottom")
-            else:
-                node.add_face(ete3.TextFace("% "), column=0, position="branch-bottom")
-
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    ts.mode = "c"
-    ts.scale = 30
-    #ts.branch_vertical_margin = 8
-    ts.show_scale = False
-    ts.margin_right = 100
-    ts.root_opening_factor = 0
-
-    tre.render(filename, tree_style=ts)
 
 
 def plot_big_tree(input_tre, filename, scale=0.5):
@@ -1512,7 +873,7 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
     # look for inconsistent dating, ie where a node has a later date than one of its ancestors
     # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
     def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 1
         nstyle["hz_line_width"] = 1
         nstyle["vt_line_color"] = "gray"
@@ -1520,7 +881,7 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
 
         next_mrad = mrad
         # if we have a date, check it
-        if node.is_leaf():
+        if node.is_leaf:
             nstyle["fgcolor"] = "#CFCFCF"
             nstyle["size"] = 10
             node.set_style(nstyle)
@@ -1556,16 +917,14 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
 
     check_date_consistency(tre, 5000)
 
-    sources_dict = {}
-    color_index = 0
     for node in tre.traverse(strategy='preorder'):
         if node.date is not None and node.date > 0:
             # median / mean on top of branch
             #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
             if show_paths:
-                node.add_face(ete3.TextFace("  %.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
+                node.add_face(ete4.treeview.TextFace("  %.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
             else:
-                node.add_face(ete3.TextFace("%.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
+                node.add_face(ete4.treeview.TextFace("%.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
             # if node.imputed_date and mu:
                 # node.add_face(ete3.TextFace("%.2f  " % (node.date_long), fgcolor="blue"), column=0, position="branch-top")
                 # node.add_face(ete3.TextFace("%.2f  " % (node.date_short), fgcolor="red"), column=0, position="branch-top")
@@ -1574,19 +933,19 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
                 # node.add_face(ete3.TextFace(node.mu_spacing_long), column=0, position="branch-bottom")
                 # node.add_face(ete3.TextFace(node.mu_spacing_short), column=0, position="branch-bottom")
 
-        if node.is_leaf():
-            node.add_face(ete3.TextFace(" "+node.name, fstyle="italic"), column=0, position="branch-right")
+        if node.is_leaf:
+            node.add_face(ete4.treeview.TextFace(" "+node.name, fstyle="italic"), column=0, position="branch-right")
 
         if show_paths:
             if show_only_undated_paths:
                 if node.date is None:
-                    node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path_long) + " "), column=0, position="branch-bottom")
+                    node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.oldest_path_long) + " "), column=0, position="branch-bottom")
                     # node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path_short) + "  "), column=0, position="branch-bottom")
             else:
-                node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path_long) + " ", fsize=8), column=0, position="branch-bottom")
+                node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.oldest_path_long) + " ", fsize=8), column=0, position="branch-bottom")
                 # node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path_short) + "  "), column=0, position="branch-bottom")
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.show_leaf_name = False
     ts.mode ="r"
     ts.scale = 100
@@ -1598,398 +957,13 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
     tre.render(filename, tree_style=ts, units="in", w=6, dpi=300)
 
 
-def plot_dates_algo_dq(input_tre, filename, show_paths=True, show_only_undated_paths=True):
-    tre = input_tre.copy()
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "gray"
-        nstyle["hz_line_color"] = "gray"
-
-        next_mrad = mrad
-        # if we have a date, check it
-        if node.is_leaf():
-            nstyle["fgcolor"] = "#CFCFCF"
-            nstyle["size"] = 10
-            node.set_style(nstyle)
-        else:
-            if node.date and node.date > 0:
-                if node.date > mrad:
-                    nstyle["fgcolor"] = "magenta"
-                    nstyle["size"] = 25
-                    node.set_style(nstyle)
-                else:
-                    if node.imputed_date:
-                        nstyle["size"] = 18
-                        nstyle["shape"] = "square"
-                    else:
-                        nstyle["size"] = 18
-                    nstyle["fgcolor"] = "lightpink"
-                    node.set_style(nstyle)
-                    next_mrad = node.date
-            else:
-                nstyle["fgcolor"] = "#80FFFF"
-                nstyle["size"] = 18
-                nstyle["shape"] = "square"
-                node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    sources_dict = {}
-    color_index = 0
-    for node in tre.traverse(strategy='preorder'):
-        if node.date is not None and node.date > 0 and not node.imputed_date:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
-            node.add_face(ete3.TextFace("%.2f" % (node.date), fgcolor="red"), column=0, position="branch-top")
-            if node.up:
-                node.add_face(ete3.TextFace("%.2f" % (node.computed_date), fgcolor="blue"), column=0, position="branch-top")
-
-        if node.is_leaf():
-            node.add_face(ete3.TextFace(node.name, fstyle="italic"), column=0, position="branch-right")
-        else:
-            if show_paths:
-                if show_only_undated_paths:
-                    if node.date is None:
-                        node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path)), column=0, position="branch-bottom")
-                else:
-                    node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path)), column=0, position="branch-bottom")
-                    node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path_dq)), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    ts.mode ="r"
-    ts.scale = 50
-    ts.branch_vertical_margin = 6
-    ts.show_scale = False
-    ts.margin_right = 100
-
-    tre.render(filename, tree_style=ts)
-
-
-def plot_dates_algo_guo(input_tre, filename, show_paths=True, show_only_undated_paths=True, pinkblue=True):
-    tre = input_tre.copy()
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "gray"
-        nstyle["hz_line_color"] = "gray"
-
-        next_mrad = mrad
-        # if we have a date, check it
-        if node.is_leaf():
-            nstyle["fgcolor"] = "#CFCFCF"
-            nstyle["size"] = 10
-            node.set_style(nstyle)
-        else:
-            if node.date and node.date > 0:
-                if node.date > mrad:
-                    nstyle["fgcolor"] = "magenta"
-                    nstyle["size"] = 25
-                    node.set_style(nstyle)
-                else:
-                    if node.imputed_date:
-                        nstyle["size"] = 17
-                        nstyle["shape"] = "square"
-                    else:
-                        nstyle["size"] = 18
-                    if pinkblue:
-                        nstyle["fgcolor"] = "#F1AEE8"
-                    else:
-                        nstyle["fgcolor"] = "#40B0A6"
-                    node.set_style(nstyle)
-                    next_mrad = node.date
-            else:
-                if pinkblue:
-                    nstyle["fgcolor"] = "#768AE0"
-                else:
-                    nstyle["fgcolor"] = "#E1BE6A"
-                nstyle["size"] = 17
-                nstyle["shape"] = "square"
-                node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    sources_dict = {}
-    color_index = 0
-    for node in tre.traverse(strategy='preorder'):
-        if node.date is not None and node.date > 0:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
-            node.add_face(ete3.TextFace("%.2f  " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
-
-        if node.is_leaf():
-            node.add_face(ete3.TextFace(node.name, fstyle="italic"), column=0, position="branch-right")
-        else:
-            if show_paths:
-                if show_only_undated_paths:
-                    if node.date is None:
-                        node.add_face(ete3.TextFace(node.oldest_paths), column=0, position="branch-bottom")
-                else:
-                    if node.date is None:
-                        node.add_face(ete3.TextFace(node.oldest_paths), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    ts.mode ="r"
-    ts.scale = 50
-    ts.branch_vertical_margin = 6
-    ts.show_scale = False
-    ts.margin_right = 100
-
-    tre.render(filename, tree_style=ts)
-
-
-def plot_dates_algo_ed_guo(input_tre, filename, show_paths=True, show_only_undated_paths=True, pinkblue=True):
-    tre = input_tre.copy()
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "gray"
-        nstyle["hz_line_color"] = "gray"
-
-        next_mrad = mrad
-        # if we have a date, check it
-        if node.is_leaf():
-            nstyle["fgcolor"] = "#CFCFCF"
-            nstyle["size"] = 10
-            node.set_style(nstyle)
-        else:
-            if node.date and node.date > 0:
-                if node.date > mrad:
-                    nstyle["fgcolor"] = "magenta"
-                    nstyle["size"] = 25
-                    node.set_style(nstyle)
-                else:
-                    if node.imputed_date:
-                        nstyle["size"] = 17
-                        nstyle["shape"] = "square"
-                    else:
-                        nstyle["size"] = 18
-                    if pinkblue:
-                        nstyle["fgcolor"] = "#F1AEE8"
-                    else:
-                        nstyle["fgcolor"] = "#40B0A6"
-                    node.set_style(nstyle)
-                    next_mrad = node.date
-            else:
-                if pinkblue:
-                    nstyle["fgcolor"] = "#768AE0"
-                else:
-                    nstyle["fgcolor"] = "#E1BE6A"
-                nstyle["size"] = 17
-                nstyle["shape"] = "square"
-                node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    sources_dict = {}
-    color_index = 0
-    for node in tre.traverse(strategy='preorder'):
-        if node.date is not None and node.date > 0:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
-            node.add_face(ete3.TextFace("%.2f  " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
-
-        if node.is_leaf():
-            node.add_face(ete3.TextFace(node.name, fstyle="italic"), column=0, position="branch-right")
-
-        if show_paths:
-            if show_only_undated_paths:
-                if node.date is None:
-                    node.add_face(ete3.TextFace(node.ed_scores_guo), column=0, position="branch-top")
-                    node.add_face(ete3.TextFace(node.oldest_paths), column=0, position="branch-bottom")
-            else:
-                node.add_face(ete3.TextFace(node.ed_scores_guo), column=0, position="branch-top")
-                node.add_face(ete3.TextFace(node.oldest_paths), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    ts.mode ="r"
-    ts.scale = 50
-    ts.branch_vertical_margin = 6
-    ts.show_scale = False
-    ts.margin_right = 100
-
-    tre.render(filename, tree_style=ts)
-
-
-
-def plot_ed_scores(input_tre, filename):
-    tre = input_tre.copy()
-
-    for node in tre.traverse(strategy='preorder'):
-        if node is not tre:
-            node.add_face(ete3.TextFace("%.1f  " % node.dist, fsize=8, fgcolor="black"), column=0, position="branch-top")
-            #if node.is_leaf():
-            node.add_face(ete3.TextFace("%.2f  /  %d  " % (node.ed_score, node.desc_leaves), fsize=8, fgcolor="black"), column=0, position="branch-bottom")
-            #else:
-            #    node.add_face(ete3.TextFace("%d  " % node.desc_leaves, fsize=8, fgcolor="black"), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = True
-    ts.branch_vertical_margin = 5
-    ts.mode ="r"
-    ts.scale = 80
-
-    tre.render(filename, tree_style=ts)
-
-
-def plot_bd(input_tre, filename, show_ranks=False, show_nodes=True):
-    tre = input_tre.copy()
-
-    # look for inconsistent dating, ie where a node has a later date than one of its ancestors
-    # mrad = most recent ancestor date of the current node - if the current node is longer ago than this, that's bad
-    def check_date_consistency(node, mrad):
-        nstyle = ete3.NodeStyle()
-        nstyle["vt_line_width"] = 1
-        nstyle["hz_line_width"] = 1
-        nstyle["vt_line_color"] = "gray"
-        nstyle["hz_line_color"] = "gray"
-
-        next_mrad = mrad
-
-        # if we have a date, check it
-        if node.date:
-            if node.date > mrad:
-                nstyle["fgcolor"] = "magenta"
-                if show_nodes:
-                    nstyle["size"] = 30
-                else:
-                    nstyle["size"] = 0
-                node.set_style(nstyle)
-            else:
-                if node.extinct:
-                    nstyle["fgcolor"] = "blue"
-                    if show_nodes:
-                        nstyle["size"] = 25
-                    else:
-                        nstyle["size"] = 0
-                    node.set_style(nstyle)
-                elif len(node.children) == 1:
-                    nstyle["fgcolor"] = "cyan"
-                    if show_nodes:
-                        nstyle["size"] = 25
-                    else:
-                        nstyle["size"] = 0
-                    node.set_style(nstyle)
-                else:
-                    nstyle["fgcolor"] = "red"
-                    if show_nodes:
-                        nstyle["size"] = 20
-                    else:
-                        nstyle["size"] = 0
-                    node.set_style(nstyle)
-                next_mrad = node.date
-        else:
-            if node.is_leaf():
-                nstyle["fgcolor"] = "grey"
-                nstyle["size"] = 12
-                node.set_style(nstyle)
-            else:
-                nstyle["fgcolor"] = "blue"
-                nstyle["size"] = 15
-                node.set_style(nstyle)
-
-        for child in node.children:
-            check_date_consistency(child, next_mrad)
-
-    check_date_consistency(tre, 5000)
-
-    colors = ["#e6194b",
-              "#f58231",
-              "#3cb44b",
-              "#4363d8",
-              "#911eb4",
-              "#f032e6",
-              "#bfef45",
-              "#42d4f4",
-              "#800000",
-              "#a9a9a9",
-              "#808000",
-              "#469990",
-              "#000075",
-              "#000000",
-              "#9a6324",
-              "#fabed4",
-              "#aaffc3",
-              "#dcbeff",
-              "#ffd8b1",
-              "#ffe119",
-              "#ffd8b1",
-              "#fffac8"]
-
-    sources_dict = {}
-    color_index = 0
-    for node in tre.traverse(strategy='preorder'):
-        if node.date is not None:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
-            if node.imputed_date:
-                node.add_face(ete3.TextFace("Imp. %.2f" % (node.date)), column=0, position="branch-top")
-            else:
-                node.add_face(ete3.TextFace("%.2f " % (node.date)), column=0, position="branch-top")
-                node.add_face(ete3.TextFace("%.2f " % (node.dist)), column=0, position="branch-bottom")
-
-            if show_ranks:
-                node.add_face(ete3.TextFace("%s, %s" % (node.name, node.tx_level), fgcolor="black"), column=0, position="branch-bottom")
-
-            # list of dates on bottom of branch, coloured by the phylogeny they came from
-            #for i in range(len(node.date[2])):
-            #    date = node.date[2][i]
-                # source = node.date[3][i][1]
-                # if source not in sources_dict:
-                #     sources_dict[source] = colors[color_index]
-                #     color_index += 1
-                #     if color_index > 0 and color_index % len(colors) == 0:
-                #         color_index = 0
-                #node.add_face(ete3.TextFace("%.1f    " % date, fgcolor=sources_dict[source]), column=i, position="branch-bottom")
-            #    node.add_face(ete3.TextFace("%.1f    " % date, fgcolor="black"), column=i, position="branch-bottom")
-        else:
-            node.add_face(ete3.TextFace(" ", fgcolor="black"), column=0, position="branch-top")
-            if node.is_leaf():
-                node.add_face(ete3.TextFace("tip", fgcolor="black"), column=0, position="branch-bottom")
-            else:
-                node.add_face(ete3.TextFace(" ", fgcolor="black"), column=0, position="branch-bottom")
-
-    ts = ete3.TreeStyle()
-    ts.show_leaf_name = False
-    ts.mode ="r"
-    ts.scale = 20
-    ts.rotation = 90
-    ts.complete_branch_lines_when_necessary = False
-
-    tre.render(filename, tree_style=ts)
-
-
 def plot_ultrametric(input_tre, filename, color_long=False, color_short=False):
     tre = input_tre.copy()
 
     # plot tree
     for node in tre.traverse(strategy="preorder"):
 
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 2
         nstyle["hz_line_width"] = 2
         nstyle["vt_line_color"] = "grey"
@@ -1999,12 +973,8 @@ def plot_ultrametric(input_tre, filename, color_long=False, color_short=False):
 
         node.set_style(nstyle)
 
-        # if node.is_leaf():
-        #     node.add_face(ete3.TextFace(name_to_simple_name(node.name), fstyle="italic"), column=0, position="branch-right")
-        #     node.add_face(ete3.TextFace(""), column=0, position="branch-bottom")
-
     if color_long:
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 2
         nstyle["vt_line_color"] = "grey"
         nstyle["hz_line_width"] = 2
@@ -2021,7 +991,7 @@ def plot_ultrametric(input_tre, filename, color_long=False, color_short=False):
         tre.children[1].children[0].children[0].set_style(nstyle)
 
     elif color_short:
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 2
         nstyle["vt_line_color"] = "grey"
         nstyle["hz_line_width"] = 2
@@ -2037,7 +1007,7 @@ def plot_ultrametric(input_tre, filename, color_long=False, color_short=False):
 
 
     tre.dist = 0.01
-    nstyle = ete3.NodeStyle()
+    nstyle = ete4.treeview.NodeStyle()
     nstyle["vt_line_width"] = 2
     nstyle["hz_line_width"] = 2
     nstyle["vt_line_color"] = "grey"
@@ -2045,7 +1015,7 @@ def plot_ultrametric(input_tre, filename, color_long=False, color_short=False):
     nstyle["size"] = 10
     tre.set_style(nstyle)
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.margin_right=100
     ts.show_leaf_name = False
     ts.mode ="r"
@@ -2065,7 +1035,7 @@ def plot_ultrametric_interp(input_tre, filename, color_long=False, color_short=F
     # plot tree
     for node in tre.traverse(strategy="preorder"):
 
-        nstyle = ete3.NodeStyle()
+        nstyle = ete4.treeview.NodeStyle()
         nstyle["vt_line_width"] = 2
         nstyle["hz_line_width"] = 2
         nstyle["vt_line_color"] = "grey"
@@ -2076,18 +1046,18 @@ def plot_ultrametric_interp(input_tre, filename, color_long=False, color_short=F
         node.set_style(nstyle)
 
         if node.name == "A":
-            node.add_face(ete3.TextFace("A ", fgcolor="crimson"), column=0, position="branch-top")
+            node.add_face(ete4.treeview.TextFace("A ", fgcolor="crimson"), column=0, position="branch-top")
             # node.add_face(ete3.TextFace("test"), column=0, position="branch-bottom")
         elif node.name == "root":
-            node.add_face(ete3.TextFace("12 "), column=0, position="branch-top")
+            node.add_face(ete4.treeview.TextFace("12 "), column=0, position="branch-top")
         elif node.name == "int1":
-            node.add_face(ete3.TextFace("7"), column=0, position="branch-top")
+            node.add_face(ete4.treeview.TextFace("7"), column=0, position="branch-top")
         elif node.name == "int2":
-            node.add_face(ete3.TextFace("11 "), column=0, position="branch-top")
+            node.add_face(ete4.treeview.TextFace("11 "), column=0, position="branch-top")
 
 
     tre.dist = 0.01
-    nstyle = ete3.NodeStyle()
+    nstyle = ete4.treeview.NodeStyle()
     nstyle["vt_line_width"] = 2
     nstyle["hz_line_width"] = 2
     nstyle["vt_line_color"] = "grey"
@@ -2095,7 +1065,7 @@ def plot_ultrametric_interp(input_tre, filename, color_long=False, color_short=F
     nstyle["size"] = 10
     tre.set_style(nstyle)
 
-    ts = ete3.TreeStyle()
+    ts = ete4.treeview.TreeStyle()
     ts.margin_right=100
     ts.show_leaf_name = False
     ts.mode ="r"

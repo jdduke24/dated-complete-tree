@@ -116,7 +116,6 @@ tree_fixing.fix_all_polytomies(whole_tre, rng)
 tree_dating.assign_dates(whole_tre, dates)
 
 # Date cleaning to ensure time consistency down the tree
-tree_dating.label_older_descendants(whole_tre)
 tree_dating.dq_date_removal(whole_tre)
 
 # Date imputation

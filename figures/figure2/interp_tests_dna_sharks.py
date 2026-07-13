@@ -26,7 +26,6 @@ dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
 # Create ETE3 tree structure for entire Open Tree of Life, with my annotations
 whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa, tree_filename="sharks_dna_ott.tre", has_branch_lengths=True)
 
-tree_dating.label_older_descendants(whole_tre_unmodified)
 tree_dating.dq_date_removal(whole_tre_unmodified)
 
 # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without

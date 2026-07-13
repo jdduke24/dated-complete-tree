@@ -104,7 +104,6 @@ for node in whole_tre.traverse(strategy="preorder"):
 #         count += 1
 
 # Date cleaning to ensure time consistency down the tree
-tree_dating.label_older_descendants(whole_tre)
 tree_dating.dq_date_removal(whole_tre)
 
 count = 0

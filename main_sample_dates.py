@@ -117,7 +117,6 @@ whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
 
 tree_dating.assign_dates(whole_tre, dates)
 
-tree_dating.label_older_descendants(whole_tre)
 tree_dating.dq_date_removal(whole_tre)
 
 from dated_complete_tree import tree_checks
@@ -177,7 +176,6 @@ for itr in range(num_itrs):
     date_sources = tree_dating.assign_dates(whole_tre, dates, sample_dates=True, rng=date_source_rng)
 
     # Date cleaning to ensure time consistency down the tree
-    tree_dating.label_older_descendants(whole_tre)
     tree_dating.dq_date_removal(whole_tre)
 
     # Date imputation

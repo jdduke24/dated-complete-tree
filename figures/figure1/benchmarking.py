@@ -198,7 +198,6 @@ for node in clade_tre.traverse(strategy="preorder"):
 
 tree_dating.remove_inconsistent_dates(clade_tre)
 
-# tree_dating.label_older_descendants(clade_tre)
 # tree_dating.dq_date_removal(clade_tre)
 
 tree_dating.date_labelling(clade_tre)
