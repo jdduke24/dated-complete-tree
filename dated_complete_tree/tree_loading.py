@@ -113,7 +113,7 @@ def build_and_annotate_tree(phylogeny_nodes,
                             has_branch_lengths=False,
                             suppress_logging=False):
 
-    """Build an ETE3 tree containing the Open Tree of Life and annotate it with extra information to be used in topology resolution and dating.
+    """Build an ete4 tree containing the Open Tree of Life and annotate it with extra information to be used in topology resolution and dating.
     Removes nodes marked as "extinct" or "extinct_inherited" in the Open Tree Taxonomy."
 
     Takes:
