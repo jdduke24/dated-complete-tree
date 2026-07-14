@@ -32,7 +32,6 @@ import os
 import sys
 import gc
 import numpy as np
-import sys
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling

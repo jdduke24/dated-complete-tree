@@ -1,11 +1,32 @@
-#!/usr/bin/env python3
+# BSD 3-Clause License
 
-# import ete3
+# Copyright (c) 2025, Jonathan David Duke
 
-from PyQt6.QtGui import QFont
-# Add the missing attribute that ETE is looking for
-if not hasattr(QFont, "StyleItalic"):
-    QFont.StyleItalic = QFont.Style.StyleItalic
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 
 import ete4
 import numpy as np
@@ -147,7 +168,7 @@ def plot_labels(input_tre, filename):
     tre.render(filename, tree_style=ts)
 
 
-def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True, arrows=True, scale=5):
+def plot_figure_polytomies(input_tre, filename, name_mrcas=True, info_colors=True, arrows=True, scale=5):
     tre = input_tre.copy()
 
     # plot tree
@@ -257,18 +278,14 @@ def plot_figure_fixing_b(input_tre, filename, name_mrcas=True, info_colors=True,
 
         if not (tx_levels[node.props["tx_level"]] == tx_levels["mrca"] and not name_mrcas):
             if tx_levels[node.props["tx_level"]] == tx_levels["species"]:
-                # node.add_face(ete4.treeview.TextFace(" " + name_to_simple_name(node.name), style={"fstyle": "italic", "fsize": 10}), column=0, position="branch-right")
                 from ete4.treeview import TextFace
-                # tf = TextFace(" " + name_to_simple_name(node.name), style={"fstyle": "italic", "fsize": 10})
                 tf = TextFace(" " + name_to_simple_name(node.name), fstyle="italic")
                 node.add_face(tf, column=0, position="branch-right")
             else:
-                # node.add_face(ete4.treeview.TextFace(name_to_simple_name(node.name), fsize=9), column=0, position="branch-top")
                 node.add_face(ete4.treeview.TextFace((' ' * spacing) +
                                             "%s\n" % name_to_simple_name(node.name) +
                                             (' ' * spacing) +
                                             "%s" % node.props["tx_level"], fsize=9), column=0, position="branch-bottom")
-                # node.add_face(ete4.treeview.TextFace("%s" % (node.props["tx_level"]), fsize=9), column=0, position="branch-bottom")
 
 
     ts = ete4.treeview.TreeStyle()
@@ -435,8 +452,6 @@ def plot_dates_dq(input_tre, filename):
 
     for node in tre.traverse(strategy='preorder'):
         if node.date is not None:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
 
             if node.date == 0:
                 node.date = [0]
@@ -919,19 +934,10 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
 
     for node in tre.traverse(strategy='preorder'):
         if node.date is not None and node.date > 0:
-            # median / mean on top of branch
-            #node.add_face(ete3.TextFace("Med %.1f / Mean %.1f" % (node.date[1], node.date[0])), column=0, position="branch-top")
             if show_paths:
                 node.add_face(ete4.treeview.TextFace("  %.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
             else:
                 node.add_face(ete4.treeview.TextFace("%.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
-            # if node.imputed_date and mu:
-                # node.add_face(ete3.TextFace("%.2f  " % (node.date_long), fgcolor="blue"), column=0, position="branch-top")
-                # node.add_face(ete3.TextFace("%.2f  " % (node.date_short), fgcolor="red"), column=0, position="branch-top")
-                # node.add_face(ete3.TextFace("%.2f  " % (node.date_above_long), fgcolor="black"), column=0, position="branch-top")
-                # node.add_face(ete3.TextFace("%.2f  " % (node.date_above_short), fgcolor="black"), column=0, position="branch-top")
-                # node.add_face(ete3.TextFace(node.mu_spacing_long), column=0, position="branch-bottom")
-                # node.add_face(ete3.TextFace(node.mu_spacing_short), column=0, position="branch-bottom")
 
         if node.is_leaf:
             node.add_face(ete4.treeview.TextFace(" "+node.name, fstyle="italic"), column=0, position="branch-right")
@@ -940,10 +946,8 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
             if show_only_undated_paths:
                 if node.date is None:
                     node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.oldest_path_long) + " "), column=0, position="branch-bottom")
-                    # node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path_short) + "  "), column=0, position="branch-bottom")
             else:
                 node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.oldest_path_long) + " ", fsize=8), column=0, position="branch-bottom")
-                # node.add_face(ete3.TextFace(oldest_path_to_str(node.oldest_path_short) + "  "), column=0, position="branch-bottom")
 
     ts = ete4.treeview.TreeStyle()
     ts.show_leaf_name = False
@@ -1047,7 +1051,6 @@ def plot_ultrametric_interp(input_tre, filename, color_long=False, color_short=F
 
         if node.name == "A":
             node.add_face(ete4.treeview.TextFace("A ", fgcolor="crimson"), column=0, position="branch-top")
-            # node.add_face(ete3.TextFace("test"), column=0, position="branch-bottom")
         elif node.name == "root":
             node.add_face(ete4.treeview.TextFace("12 "), column=0, position="branch-top")
         elif node.name == "int1":

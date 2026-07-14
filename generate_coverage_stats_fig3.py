@@ -1,5 +1,32 @@
-import os
-os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dated-complete-tree')
+# BSD 3-Clause License
+
+# Copyright (c) 2025, Jonathan David Duke
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 
 import sys
 import numpy as np
@@ -8,8 +35,6 @@ from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
 from dated_complete_tree import tree_fixing
 from dated_complete_tree import tree_dating
-from dated_complete_tree import tree_metrics
-from dated_complete_tree import tree_checks
 
 import logging
 logger = logging.getLogger(__name__)
@@ -108,8 +133,6 @@ clades = ['cellular_organisms_ott93302',
                'Diptera_ott661378',
                'Hymenoptera_ott753726',
                'Hemiptera_ott603650',
-               'Orthoptera_ott1095594',
-               'Trichoptera_ott457402',
                'Odonata_ott133665',
            'Malacostraca_ott212701',
            'Copepoda_ott461528',
@@ -124,7 +147,6 @@ clades = ['cellular_organisms_ott93302',
      'Porifera_ott67819',
      'Echinodermata_ott451020',
      'Bryozoa_ott442934',
-     # 'Rotifera_ott471706',
      'Tardigrada_ott111438',
  'Chloroplastida_ott361838',
      'Tracheophyta_ott10210',
@@ -187,9 +209,17 @@ def date_stats(parent, stats):
 stats = {}
 date_stats(whole_tre, stats)
 
-fout = open("date_stats_14.txt", "wt")
+fout = open("figures/figure3/date_stats.csv", "wt")
+fout.write("Clade,Species richness,Dated nodes,Date coverage,Date source trees,Phylogenetic coverage\n")
 for clade in clades:
-    spaces = 36 - tx_levels[stats[clade][0]]
-    fout.write(' ' * spaces)
-    fout.write("%s\t%s\t%d\t%f\t%d\t%d\t%f\n" % (clade, stats[clade][0], stats[clade][1], stats[clade][2], stats[clade][3], stats[clade][5], stats[clade][4]))
+    parts = clade.split('_')
+    if parts[0] == "cellular":
+        name = "All Life"
+    else:
+        name = parts[0]
+
+    # spaces = 36 - tx_levels[stats[clade][0]]
+    # fout.write(' ' * spaces)
+
+    fout.write(f'{name},"{stats[clade][3]:,}","{stats[clade][1]:,}",{100*stats[clade][2]:.1f}%,"{stats[clade][5]:,}",{100*stats[clade][4]:.1f}%\n')
 fout.close()

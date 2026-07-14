@@ -1,6 +1,3 @@
-import os
-os.chdir('/Users/Jonathan/Library/CloudStorage/Dropbox/Imperial/Tree_of_Life/Open_Tree/python/dated-complete-tree')
-
 all_scores = []
 
 fin = open("output/dated_tree_ed_scores.txt", "r")
