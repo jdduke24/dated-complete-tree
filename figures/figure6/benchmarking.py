@@ -29,21 +29,25 @@
 
 
 import sys
-import numpy as np
+import gc
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
 from dated_complete_tree import tree_fixing
 from dated_complete_tree import tree_dating
 
+import random
+import numpy as np
+import ete4
+
 import logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.WARNING)
+logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.ERROR)
 
 sys.setrecursionlimit(10000)
 
 #####################################################################################################################
-# Load and prune tree
+# First, get out entire tree, which we will take subsets of for benchmarking
 
 # Load metadata for tree from Open Tree and Chronosynth
 dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
@@ -70,7 +74,6 @@ tree_fixing.forced_taxa_moves(whole_tre_unmodified)
 # reloading everything
 whole_tre = whole_tre_unmodified.copy()
 
-#####################################################################################################################
 # Fix topology
 
 # First, do labelling for steps 1-3:
@@ -107,118 +110,99 @@ tree_fixing.fix_all_polytomies(whole_tre, rng)
 # Remove one-child nodes. Gives a fully bifurcating tree.
 whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
 
+tree_dating.assign_dates(whole_tre, dates)
+
+
 #####################################################################################################################
-# Assign and interpolate dates
 
-# Assign dates
-tree_dating.assign_dates(whole_tre, dates, num_sources=True)
+# Write out newick files for clades of the tree, each with an "ages" file listing the dates available in the phylesystem
 
+# Crown nodes of the trees:
 
-clades = ['cellular_organisms_ott93302',
-          'Eukaryota_ott304358',
- 'Metazoa_ott691846',
-     'Chordata_ott125642',
-         'Actinopteri_ott285821',
-         'Squamata_ott35888',
-         'Aves_ott81461',
-         'Amphibia_ott544595',
-         'Mammalia_ott244265',
-         'Chondrichthyes_ott278108',
-         'Testudines_ott639666',
-     'Arthropoda_ott632179',
-        'Pancrustacea_ott985906',
-           'Insecta_ott1062253',
-               'Coleoptera_ott865243',
-               'Lepidoptera_ott965954',
-               'Diptera_ott661378',
-               'Hymenoptera_ott753726',
-               'Hemiptera_ott603650',
-               'Odonata_ott133665',
-           'Malacostraca_ott212701',
-           'Copepoda_ott461528',
-           'Branchiopoda_ott632175',
-        'Chelicerata_ott1041457',
-        'Myriapoda_ott177526',
-     'Mollusca_ott802117',
-     'Platyhelminthes_ott555379',
-     'Annelida_ott941620',
-     'Nematoda_ott395057',
-     'Cnidaria_ott641033',
-     'Porifera_ott67819',
-     'Echinodermata_ott451020',
-     'Bryozoa_ott442934',
-     'Tardigrada_ott111438',
- 'Chloroplastida_ott361838',
-     'Tracheophyta_ott10210',
-         'Magnoliopsida_ott99252',
-         'Polypodiopsida_ott166292',
-     'Bryophyta_ott246594',
-     'Marchantiophyta_ott56601',
-     'Chlorophyta_ott979501',
- 'Rhodophyta_ott878953',
- 'Fungi_ott352914',
-     'Ascomycota_ott439373',
-     'Basidiomycota_ott634628',
-     'Microsporidia_ott16113',
- 'SAR_ott5246039',
-     'Stramenopiles_ott266745',
-     'Alveolata_ott266751',
-     'Rhizaria_ott6929',
-'Archaea_ott996421',
-'Bacteria_ott844192']
+# Columbiformes_ott363030: 685 nodes
+# Muridae_ott816256: 2007
+# mrcaott1822ott688506: 4783
+# Jungermanniales_ott56621: 9069
+# Squamata_ott35888: 22441
+# Stramenopiles_ott266745: 40175
+# Teleostei_ott212201: 74731
+# Gastropoda_ott409995: 140247
+# Magnoliopsida_ott99252: 746891
+# Metazoa_ott691846: 2950313
+# cellular_organisms_ott93302: 4589559
 
 
+trees_to_write = [
+    'Columbiformes_ott363030',
+    'Muridae_ott816256',
+    'mrcaott1822ott688506',
+    'Jungermanniales_ott56621',
+    'Squamata_ott35888',
+    'Stramenopiles_ott266745',
+    'Teleostei_ott212201',
+    'Gastropoda_ott409995',
+    'Magnoliopsida_ott99252',
+    'Metazoa_ott691846',
+    'cellular_organisms_ott93302']
 
-def label_pct_dates(parent):
-    if parent.is_leaf:
-        results = [0,0,1,0,set()]
-    elif not parent.props["date"]:
-        results = [1,0,0,0,set()]
+for crown in trees_to_write:
+    for node in whole_tre.search_nodes(name=crown):
+        clade_tre = node
+        break
+
+    print(crown, len(list(clade_tre.descendants()))+1, clade_tre.props["date"])
+
+    fout = open("phylocom_tests/%s.ages" % crown,'wt')
+    for node in clade_tre.traverse():
+        if node.props["date"]:
+            fout.write("%s\t%f\n" % (node.name, node.props["date"]))
+    fout.close()
+
+
+    clade_tre.write("phylocom_tests/%s.phylo" % crown,
+                    parser=1,
+                    format_root_node=True)
+
+
+#####################
+
+# To be run separately in IPython: read in a Newick file called 'phylo' and a text file called 'ages' - as used
+# by Phylocom - and write same output as Phylocom, for fair comparison
+
+# use IPython timeit function
+%%timeit -n1 -r2
+
+# read 'phylo' Newick file
+clade_tre = ete4.Tree(open("phylocom_tests/phylo","r").read(), parser=1)
+
+# read 'ages' text file
+dates = {}
+with open("phylocom_tests/ages", 'r') as fin:
+    for line in fin:
+        bits = line.split('\t')
+        dates[bits[0]] = float(bits[1])
+
+# apply dates to nodes in tree
+for node in clade_tre.traverse(strategy="preorder"):
+    if node.name in dates:
+        node.add_prop("date", dates[node.name])
+    elif node.is_leaf:
+        node.add_prop("date", 0.)
     else:
-        results = [1,1,0,0,parent.props["date_sourceids"]]
+        node.add_prop("date", None)
+    node.add_prop("imputed_date", False)
+    node.add_prop("imputation_type", 0)
 
-    if parent.props["ph_tx"] == "PH":
-        results[3] += 1
+# either use Phylocom's date consistency fixing
+tree_dating.remove_inconsistent_dates(clade_tre)
 
-    for child in parent.children:
-        new_results = label_pct_dates(child)
-        results[0] += new_results[0]
-        results[1] += new_results[1]
-        results[2] += new_results[2]
-        results[3] += new_results[3]
-        results[4] |= new_results[4]
+# or, use our new date consistency fixing
+# tree_dating.dq_date_removal(clade_tre)
 
-    parent.add_prop("child_tree_size", results[0])
-    parent.add_prop("num_dates", results[1])
-    parent.add_prop("num_leaves", results[2])
-    parent.add_prop("num_ph", results[3])
-    parent.add_prop("num_date_sources", len(results[4]))
+# interpolate with EQS-L
+tree_dating.date_labelling(clade_tre)
+tree_dating.impute_missing_dates(clade_tre, l=1)
 
-    return results
+tree_dating.compute_branch_lengths(clade_tre)
 
-label_pct_dates(whole_tre)
-
-def date_stats(parent, stats):
-    if parent.name in clades:
-        stats[parent.name] = (parent.props["tx_level"], parent.props["num_dates"], parent.props["num_dates"]/parent.props["child_tree_size"], parent.props["num_leaves"], parent.props["num_ph"]/(parent.props["child_tree_size"]+parent.props["num_leaves"]), parent.props["num_date_sources"])
-
-    for child in parent.children:
-        date_stats(child, stats)
-
-stats = {}
-date_stats(whole_tre, stats)
-
-fout = open("figures/figure3/date_stats.csv", "wt")
-fout.write("Clade,Species richness,Dated nodes,Date coverage,Date source trees,Phylogenetic coverage\n")
-for clade in clades:
-    parts = clade.split('_')
-    if parts[0] == "cellular":
-        name = "All Life"
-    else:
-        name = parts[0]
-
-    # spaces = 36 - tx_levels[stats[clade][0]]
-    # fout.write(' ' * spaces)
-
-    fout.write(f'{name},"{stats[clade][3]:,}","{stats[clade][1]:,}",{100*stats[clade][2]:.1f}%,"{stats[clade][5]:,}",{100*stats[clade][4]:.1f}%\n')
-fout.close()
+clade_tre.write("phylocom_tests/my_dated_tree.phylo", parser=1)

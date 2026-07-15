@@ -28,6 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+
 import ete4
 import numpy as np
 from .taxonomy_utils import tx_levels
@@ -279,6 +280,10 @@ def plot_figure_polytomies(input_tre, filename, name_mrcas=True, info_colors=Tru
         if not (tx_levels[node.props["tx_level"]] == tx_levels["mrca"] and not name_mrcas):
             if tx_levels[node.props["tx_level"]] == tx_levels["species"]:
                 from ete4.treeview import TextFace
+                from PyQt6.QtGui import QFont
+                # Add the missing attribute that ETE is looking for
+                if not hasattr(QFont, "StyleItalic"):
+                    QFont.StyleItalic = QFont.Style.StyleItalic
                 tf = TextFace(" " + name_to_simple_name(node.name), fstyle="italic")
                 node.add_face(tf, column=0, position="branch-right")
             else:
@@ -425,13 +430,13 @@ def plot_dates_dq(input_tre, filename):
 
         next_mrad = mrad
         # if we have a date, check it
-        if node.date:
-            if np.median(node.date) > mrad:
+        if node.props["date"]:
+            if np.median(node.props["date"]) > mrad:
                 nstyle["fgcolor"] = "magenta"
                 nstyle["size"] = 30
                 node.set_style(nstyle)
             else:
-                if node.imputed_date:
+                if node.props["imputed_date"]:
                     nstyle["fgcolor"] = "orange"
                     nstyle["size"] = 25
                     node.set_style(nstyle)
@@ -439,7 +444,7 @@ def plot_dates_dq(input_tre, filename):
                     nstyle["fgcolor"] = "red"
                     nstyle["size"] = 20
                     node.set_style(nstyle)
-                next_mrad = np.median(node.date)
+                next_mrad = np.median(node.props["date"])
         else:
             nstyle["fgcolor"] = "blue"
             nstyle["size"] = 15
@@ -451,18 +456,18 @@ def plot_dates_dq(input_tre, filename):
     check_date_consistency(tre, 5000)
 
     for node in tre.traverse(strategy='preorder'):
-        if node.date is not None:
+        if node.props["date"] is not None:
 
-            if node.date == 0:
-                node.date = [0]
+            if node.props["date"] == 0:
+                node.props["date"] = [0]
 
-            dt_str = "%.1f" % node.date[0]
-            if node.date_sources:
-                dt_str += " %s" % node.date_sources[0]
-            for i in range(1,len(node.date)):
-                dt_str += "\n%.1f" % node.date[i]
-                if node.date_sources:
-                    dt_str += " %s" % node.date_sources[i]
+            dt_str = "%.1f" % node.props["date"][0]
+            if node.props["date_sources"]:
+                dt_str += " %s" % node.props["date_sources"][0]
+            for i in range(1,len(node.props["date"])):
+                dt_str += "\n%.1f" % node.props["date"][i]
+                if node.props["date_sources"]:
+                    dt_str += " %s" % node.props["date_sources"][i]
 
             node.add_face(ete4.treeview.TextFace("%s " % (dt_str)), column=0, position="branch-top")
 
@@ -901,13 +906,13 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
             nstyle["size"] = 10
             node.set_style(nstyle)
         else:
-            if node.date and node.date > 0:
-                if node.date > mrad:
+            if node.props["date"] and node.props["date"] > 0:
+                if node.props["date"] > mrad:
                     nstyle["fgcolor"] = "magenta"
                     nstyle["size"] = 25
                     node.set_style(nstyle)
                 else:
-                    if node.imputed_date:
+                    if node.props["imputed_date"]:
                         nstyle["size"] = 17
                         nstyle["shape"] = "square"
                     else:
@@ -917,7 +922,7 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
                     else:
                         nstyle["fgcolor"] = "#40B0A6"
                     node.set_style(nstyle)
-                    next_mrad = node.date
+                    next_mrad = node.props["date"]
             else:
                 if pinkblue:
                     nstyle["fgcolor"] = "#768AE0"
@@ -933,21 +938,26 @@ def plot_dates_algo(input_tre, filename, show_paths=True, show_only_undated_path
     check_date_consistency(tre, 5000)
 
     for node in tre.traverse(strategy='preorder'):
-        if node.date is not None and node.date > 0:
+        if node.props["date"] is not None and node.props["date"] > 0:
             if show_paths:
-                node.add_face(ete4.treeview.TextFace("  %.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
+                node.add_face(ete4.treeview.TextFace("  %.2f " % (node.props["date"]), fgcolor="firebrick"), column=0, position="branch-top")
             else:
-                node.add_face(ete4.treeview.TextFace("%.2f " % (node.date), fgcolor="firebrick"), column=0, position="branch-top")
+                node.add_face(ete4.treeview.TextFace("%.2f " % (node.props["date"]), fgcolor="firebrick"), column=0, position="branch-top")
 
         if node.is_leaf:
+            from PyQt6.QtGui import QFont
+            # Add the missing attribute that ETE is looking for
+            if not hasattr(QFont, "StyleItalic"):
+                QFont.StyleItalic = QFont.Style.StyleItalic
+
             node.add_face(ete4.treeview.TextFace(" "+node.name, fstyle="italic"), column=0, position="branch-right")
 
         if show_paths:
             if show_only_undated_paths:
-                if node.date is None:
-                    node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.oldest_path_long) + " "), column=0, position="branch-bottom")
+                if node.props["date"] is None:
+                    node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.props["oldest_path_long"]) + " "), column=0, position="branch-bottom")
             else:
-                node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.oldest_path_long) + " ", fsize=8), column=0, position="branch-bottom")
+                node.add_face(ete4.treeview.TextFace(oldest_path_to_str(node.props["oldest_path_long"]) + " ", fsize=8), column=0, position="branch-bottom")
 
     ts = ete4.treeview.TreeStyle()
     ts.show_leaf_name = False
