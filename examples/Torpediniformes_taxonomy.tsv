@@ -1,0 +1,115 @@
+uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|	
+356640	|	195928	|	Torpediniformes	|	order	|	ncbi:117888,worms:10215,gbif:881,irmng:11530	|		|		|	
+356637	|	356640	|	Hypnidae	|	family	|	ncbi:117889,worms:475045,gbif:5879,irmng:111139	|	Hypnidae (family in Opisthokonta)	|		|	
+932206	|	356637	|	Hypnos	|	genus	|	ncbi:117890,worms:269450,gbif:2420563,irmng:1282544	|		|		|	
+73020	|	932206	|	Hypnos monopterygius	|	species	|	ncbi:257756,worms:314648,gbif:2420564,irmng:10774798	|		|		|	
+4139357	|	356640	|	unclassified Torpediniformes	|	no rank - terminal	|	ncbi:727674	|		|	not_otu,was_container	|	
+553102	|	356640	|	Torpedinidae	|	family	|	ncbi:30480,worms:105718,gbif:5871,irmng:114176	|		|		|	
+493411	|	553102	|	Torpedo	|	genus	|	ncbi:7786,worms:826639,gbif:8169455,irmng:1021706	|		|	sibling_higher	|	
+7060769	|	493411	|	unclassified Torpedo	|	no rank - terminal	|	ncbi:2599791	|		|	not_otu,was_container	|	
+232016	|	493411	|	Torpedo fuscomaculata	|	species	|	ncbi:1003816,worms:217379,gbif:5215527,irmng:10716196	|		|	sibling_higher	|	
+3594649	|	493411	|	Torpedo panthera	|	species	|	ncbi:1622304,worms:217381,gbif:5215529,irmng:10163608	|		|	sibling_higher	|	
+553105	|	493411	|	Torpedo ocellata	|	species	|	ncbi:30481	|		|	sibling_higher	|	
+254411	|	493411	|	Torpedo sinuspersici	|	species	|	ncbi:1213716,worms:217380,gbif:5215548,irmng:11178111	|		|	sibling_higher	|	
+372007	|	493411	|	Torpedo mackayana	|	species	|	ncbi:1213715,worms:271682,gbif:5215533,irmng:10345646	|		|	sibling_higher	|	
+355116	|	493411	|	Torpedo torpedo	|	species	|	ncbi:1213717,worms:271691,gbif:5215534,irmng:10840915	|		|	sibling_higher	|	
+493406	|	493411	|	Torpedo marmorata	|	species	|	ncbi:7788,worms:271684,gbif:5215518,irmng:10832056	|		|	sibling_higher	|	
+7060767	|	493411	|	Torpedo sp. 1 KJ-2019	|	species	|	ncbi:2599792	|		|	incertae_sedis	|	
+5744207	|	493411	|	Torpedo sp. A KKB-2014	|	species	|	ncbi:1455695	|		|	incertae_sedis	|	
+467157	|	493411	|	Torpedo sp.	|	species	|	ncbi:70732	|		|	not_otu,incertae_sedis	|	
+7060768	|	493411	|	Torpedo subgenus Torpedo	|	subgenus	|	worms:105786	|		|	barren	|	
+3594645	|	493411	|	Torpedo adenensis	|	species	|	worms:271676,gbif:5215526,irmng:10152761	|		|	sibling_higher	|	
+3594648	|	493411	|	Torpedo alexandrinsis	|	species	|	worms:271677,irmng:11345715	|		|	sibling_higher	|	
+3594647	|	493411	|	Torpedo andersoni	|	species	|	worms:271678,gbif:5215531,irmng:11285933	|		|	sibling_higher	|	
+3594646	|	493411	|	Torpedo bauchotae	|	species	|	worms:271679,gbif:5215511,irmng:10578527	|		|	sibling_higher	|	
+3594640	|	493411	|	Torpedo microdiscus	|	species	|	worms:271685,gbif:9574573,irmng:11040268	|		|	sibling_higher	|	
+3594642	|	493411	|	Torpedo semipelagica	|	species	|	worms:271688,gbif:9297253,irmng:10141884	|		|	sibling_higher	|	
+3594643	|	493411	|	Torpedo suessii	|	species	|	worms:271689,gbif:5215555,irmng:10144715	|		|	sibling_higher	|	
+5506106	|	493411	|	Narcobatus fairchildi	|	species	|	irmng:11245268	|		|	hidden,sibling_higher	|	
+5736817	|	553102	|	Torpedininae	|	subfamily	|	worms:148891	|		|		|	
+5744208	|	5736817	|	Tetronarce	|	genus	|	ncbi:1804737,worms:297924,worms:105785,gbif:2417649	|		|		|	
+205470	|	5744208	|	Tetronarce cf. nobiliana GJPN-2012	|	species	|	ncbi:1214758	|		|		|	
+346065	|	5744208	|	Tetronarce nobiliana	|	species	|	ncbi:27590,worms:321911,gbif:2417699,irmng:10154289	|		|		|	
+25737	|	5744208	|	Tetronarce macneilli	|	species	|	ncbi:495885,worms:845706,gbif:8279695,irmng:10887057	|		|		|	
+3594637	|	5744208	|	Tetronarce formosa	|	species	|	ncbi:2590765,worms:845705,gbif:7428525,irmng:11698846	|		|		|	
+970849	|	5744208	|	Tetronarce tokionis	|	species	|	ncbi:195337,worms:845708,gbif:7735575,irmng:10851608	|		|		|	
+493412	|	5744208	|	Tetronarce californica	|	species	|	ncbi:7787,worms:845703,gbif:8202844,irmng:10849283	|		|		|	
+3594644	|	5744208	|	Tetronarce tremens	|	species	|	ncbi:1804736,worms:845709,gbif:8051869,irmng:10156915	|		|		|	
+3594638	|	5744208	|	Tetronarce puelcha	|	species	|	worms:321912,gbif:2417659,irmng:10345417	|		|		|	
+3594639	|	5744208	|	Tetronarce fairchildi	|	species	|	worms:845704,gbif:7454749,irmng:10798665	|		|		|	
+3594641	|	5744208	|	Tetronarce peruana	|	species	|	worms:845707,gbif:8251508,irmng:10163609	|		|		|	
+7649141	|	5744208	|	Tetronarce cowleyi	|	species	|	gbif:9148109	|		|		|	
+3594685	|	553102	|	Eotorpedo	|	no rank	|	gbif:4825178,irmng:1094565	|		|	extinct,incertae_sedis,sibling_higher	|	
+6139352	|	3594685	|	Eotorpedo jaekeli	|	no rank	|	gbif:8470541	|		|	extinct,incertae_sedis	|	
+6139353	|	3594685	|	Eotorpedo nolfi	|	no rank	|	gbif:8595157	|		|	extinct,incertae_sedis	|	
+6139354	|	3594685	|	Eotorpedo zennaroi	|	no rank	|	gbif:8602567	|		|	extinct,incertae_sedis	|	
+6139351	|	3594685	|	Torpedo hilgendorfi	|	no rank	|	gbif:9535959	|		|	extinct,incertae_sedis	|	
+818997	|	356640	|	Narcinidae	|	family	|	ncbi:40665,worms:148816,gbif:2183,irmng:113895	|		|		|	
+937806	|	818997	|	Benthobatis	|	genus	|	ncbi:1154677,worms:268534,gbif:2417732,irmng:1032130	|		|		|	
+937798	|	937806	|	Benthobatis kreffti	|	species	|	ncbi:1154678,worms:279902,gbif:2417737,irmng:11158788	|		|		|	
+3594664	|	937806	|	Benthobatis moresbyi	|	species	|	ncbi:1507366,worms:279904,gbif:2417734,irmng:10570801	|		|		|	
+3594665	|	937806	|	Benthobatis yangi	|	species	|	ncbi:1443564,worms:388404,gbif:2417733,irmng:11788757	|		|		|	
+3594663	|	937806	|	Benthobatis marcida	|	species	|	worms:279903,gbif:2417735,irmng:10158308	|		|		|	
+3594666	|	818997	|	Diplobatis	|	genus	|	ncbi:1870829,worms:268991,gbif:2417719,irmng:1350181	|		|		|	
+773792	|	3594666	|	Diplobatis ommata	|	species	|	ncbi:1870830,worms:280551,gbif:2417725,irmng:10580091	|		|		|	
+3594667	|	3594666	|	Diplobatis colombiensis	|	species	|	worms:280549,gbif:2417729,irmng:11215656	|		|		|	
+3594671	|	3594666	|	Diplobatis guamachensis	|	species	|	worms:280550,gbif:2417723,irmng:11372356	|		|		|	
+3594668	|	3594666	|	Diplobatis pictus	|	species	|	worms:280552,gbif:2417720,irmng:10164543	|		|		|	
+493416	|	818997	|	Discopyge	|	genus	|	ncbi:7784,worms:269004,gbif:2417716,irmng:1330744	|		|		|	
+32568	|	493416	|	Discopyge tschudii	|	species	|	ncbi:458575,worms:280568,gbif:2417718,irmng:11303463	|		|		|	
+3594662	|	493416	|	Discopyge castelloi	|	species	|	worms:474891,gbif:2417717,irmng:11717376	|		|		|	
+920359	|	818997	|	Narcine	|	genus	|	ncbi:195315,worms:157865,gbif:8405394,irmng:1307049	|		|		|	
+295468	|	920359	|	Narcine brevilabiata	|	species	|	ncbi:626243,worms:275387,gbif:2417767,irmng:10580332	|		|		|	
+3594655	|	920359	|	Narcine lingula	|	species	|	ncbi:1508082,worms:275394,gbif:2417740,irmng:10153151	|		|		|	
+703721	|	920359	|	Narcine westraliensis	|	species	|	ncbi:495871,worms:275401,gbif:2417752,irmng:10161073	|		|		|	
+703724	|	920359	|	Narcine lasti	|	species	|	ncbi:495870,worms:275392,gbif:2417754,irmng:11105754	|		|		|	
+808382	|	920359	|	Narcine entemedor	|	species	|	ncbi:1213697,worms:275389,gbif:2417774,irmng:10157281	|		|		|	
+3594656	|	920359	|	Narcine bancroftii	|	species	|	ncbi:1343680,worms:275386,gbif:2417744,irmng:11177549	|		|		|	
+73023	|	920359	|	Narcine tasmaniensis	|	species	|	ncbi:257757,worms:275398,gbif:2417739,irmng:10662860	|		|		|	
+3594651	|	920359	|	Narcine leoparda	|	species	|	ncbi:2293330,worms:275393,gbif:2417757,irmng:10150914	|		|		|	
+5744209	|	920359	|	Narcine cf. oculifera KKB-2014	|	species	|	ncbi:1455687	|		|		|	
+385698	|	920359	|	Narcine brunnea	|	species	|	ncbi:586834,worms:275388,gbif:2417766,irmng:10892234	|		|		|	
+7060766	|	920359	|	unclassified Narcine	|	no rank - terminal	|	ncbi:2599789	|		|	not_otu,was_container	|	
+920356	|	920359	|	Narcine timlei	|	species	|	ncbi:195316,worms:275399,gbif:2417758,irmng:10576333	|		|		|	
+754018	|	920359	|	Narcine brasiliensis	|	species	|	ncbi:307038,worms:157866,gbif:2417770,irmng:10152510	|		|		|	
+3594654	|	920359	|	Narcine maculata	|	species	|	ncbi:1455688,worms:367293,gbif:8860645,irmng:11396959	|		|		|	
+7060765	|	920359	|	Narcine sp. 1 KJ-2019	|	species	|	ncbi:2599790	|		|	incertae_sedis	|	
+5744210	|	920359	|	Narcine sp. KKB-2014	|	species	|	ncbi:1455689	|		|	incertae_sedis	|	
+3594658	|	920359	|	Narcine rierai	|	species	|	worms:221343,gbif:2417776,irmng:11412590	|		|		|	
+3594659	|	920359	|	Narcine atzi	|	species	|	worms:275385,gbif:2417773,irmng:10937673	|		|		|	
+3594653	|	920359	|	Narcine insolita	|	species	|	worms:275391,gbif:2417741,irmng:10150913	|		|		|	
+3594657	|	920359	|	Narcine oculifera	|	species	|	worms:275396,gbif:2417775,irmng:10577395	|		|		|	
+3594650	|	920359	|	Narcine prodorsalis	|	species	|	worms:275397,gbif:2417751,irmng:11419955	|		|		|	
+3594652	|	920359	|	Narcine vermiculatus	|	species	|	worms:275400,gbif:2417755,irmng:10157473	|		|		|	
+3594660	|	920359	|	Narcine nelsoni	|	species	|	worms:398280,gbif:2417742,irmng:11461917	|		|		|	
+3594661	|	920359	|	Narcine ornata	|	species	|	worms:398281,gbif:2417768,irmng:11461793	|		|		|	
+6139350	|	920359	|	Narcine olisiponensis	|	no rank	|	gbif:8541964	|		|	extinct,incertae_sedis	|	
+6139348	|	920359	|	Narcine baliensis	|	species	|	gbif:8617857	|		|		|	
+6139349	|	920359	|	Narcine molini	|	no rank	|	gbif:8658296	|		|	extinct,incertae_sedis	|	
+4146082	|	818997	|	Narcinops	|	genus	|	gbif:4842617	|		|		|	
+7649140	|	4146082	|	Narcinops nelsoni	|	species	|	gbif:9759105	|		|		|	
+932203	|	356640	|	Narkidae	|	family	|	ncbi:117892,worms:196076,gbif:2192,irmng:110365	|		|		|	
+129234	|	932203	|	Narke	|	genus	|	ncbi:62964,worms:206363,gbif:2419754,irmng:1035220	|		|		|	
+129235	|	129234	|	Narke japonica	|	species	|	ncbi:62965,worms:278822,gbif:9782215,irmng:10580335	|		|		|	
+642075	|	129234	|	Narke capensis	|	species	|	ncbi:1003762,worms:221344,gbif:2419755,irmng:10577573	|		|		|	
+868816	|	129234	|	Narke dipterygia	|	species	|	ncbi:1175541,worms:278821,gbif:2419760,irmng:10448377	|		|		|	
+3594678	|	932203	|	Crassinarke	|	genus	|	ncbi:2012958,worms:268865,gbif:2419751,irmng:1111041	|		|		|	
+3594680	|	3594678	|	Crassinarke dormitor	|	species	|	ncbi:2012959,worms:280414,gbif:2419752,irmng:11222376	|		|		|	
+802684	|	932203	|	Typhlonarke	|	genus	|	ncbi:1072513,worms:271183,gbif:2419769,irmng:1047018	|		|		|	
+802673	|	802684	|	Typhlonarke aysoni	|	species	|	ncbi:1072514,worms:283076,gbif:2419771,irmng:10134676	|		|		|	
+3594672	|	802684	|	Typhlonarke tarakea	|	species	|	worms:283077,gbif:2419770,irmng:10134416	|		|		|	
+3594677	|	932203	|	Heteronarce	|	genus	|	worms:205603,gbif:2417731,irmng:1029626	|		|		|	
+3594676	|	3594677	|	Heteronarce garmani	|	species	|	worms:220971,gbif:2419741,irmng:10838025	|		|		|	
+3594681	|	3594677	|	Heteronarce bentuviai	|	species	|	worms:278300,gbif:2419745,irmng:11306900	|		|		|	
+3594682	|	3594677	|	Heteronarce mollis	|	species	|	worms:278301,gbif:2419739,irmng:10134432	|		|		|	
+3594683	|	3594677	|	Heteronarce prabhui	|	species	|	worms:278302,gbif:2419744,irmng:10702607	|		|		|	
+3594673	|	932203	|	Temera	|	genus	|	worms:271056,gbif:2419765,irmng:1360170	|		|		|	
+3594679	|	3594673	|	Temera hardwickii	|	species	|	worms:282938,gbif:2419766,irmng:11109529	|		|		|	
+3594675	|	932203	|	Electrolux	|	genus	|	worms:397431,gbif:2419748,irmng:1006597	|		|		|	
+3594674	|	3594675	|	Electrolux addisoni	|	species	|	worms:398282,gbif:2419749,irmng:11442673	|		|		|	
+4139361	|	356640	|	Torpediniformes sp. BOLD:AAD7045	|	species	|	ncbi:855066	|		|	incertae_sedis	|	
+4139362	|	356640	|	Torpediniformes sp. BOLD:AAC2566	|	species	|	ncbi:855064	|		|	incertae_sedis	|	
+4139363	|	356640	|	Torpediniformes sp. BOLD:AAC6970	|	species	|	ncbi:855065	|		|	incertae_sedis	|	
+4139358	|	356640	|	Torpediniformes sp. BOLD:AAN2286	|	species	|	ncbi:976992	|		|	incertae_sedis	|	
+4139359	|	356640	|	Torpediniformes sp. BOLD:AAE3661	|	species	|	ncbi:976990	|		|	incertae_sedis	|	
+4139360	|	356640	|	Torpediniformes sp. BOLD:AAN2285	|	species	|	ncbi:976991	|		|	incertae_sedis	|	

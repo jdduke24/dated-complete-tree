@@ -1,27 +1,38 @@
 # dated-complete-tree
-Code that takes the Open Tree of Life, resolves all polytomies, and interpolates dates for all nodes. For a full explanation of the algorithms and the results of using them, see [this preprint](https://doi.org/10.64898/2026.03.05.709771 ).
 
-Resolution and interpolation can be performed repeatedly to generate distributions of dated complete trees. Dates can be sampled from available date sources in the [Open Tree phylesystem](github.com/OpenTreeOfLife/phylesystem-1).
+Code that takes the Open Tree of Life, resolves all polytomies, assigns dates from available chronograms in the Open Tree database, and interpolates all missing dates. For a full explanation of the algorithms and the results of using them, see [this preprint](https://doi.org/10.64898/2026.03.05.709771).
 
-Optionally, you can also compute a distribution of evolutionary distinctiveness scores (you can choose ED/EDGE or ED2/EDGE2) for each leaf node.
+## 1. Date interpolation only
+
+The algorithms for interpolating missing dates can be used independently of Open Tree, requiring only the `ete4` and `numpy` Python packages. The script `interpolate_newick.py` can be run from the command line. It takes a text file with a Newick tree and a text file with a list of node ages, interpolates missing dates, and writes out a Newick tree with branch lengths. Leaf nodes with no date are assumed to have a date of 0. The root node must be dated.
+
+By default the script looks for a tree file called `phylo` and a tab-separated file of nodes and ages called `ages` - in this respect it behaves the same as the software `phylocom bladj`. The input files can instead be specified; for example `interpolate_newick.py --phylo=examples/Columbiformes.tre --ages=examples/Columbiformes_ages.txt`. See `interpolate_newick.py --help` for further options.
+
+## 2. Working with the dataset rather than generating it
 
 Pre-computed median trees and tree distributions can be found [at the accompanying Zenodo dataset](https://doi.org/10.5281/zenodo.19049120).
 
-## Prerequisites:
+If you want to use a fully-dated tree but require only a subtree or subset of species, see the Python notebook `getting_a_subtree.ipynb`.
 
-- The Open Tree of Life. By default we look for a folder `./opentree16.1_tree/` containing the files `annotations.json` and `labelled_supertree/labelled_supertree_ottnames.tre`.
+## 3. Generating trees
 
-- The Open Tree Taxonomy. By default we look for a folder called `./ott3.7.3/` containing `taxonomy.tsv`.
+Starting with the Open Tree of Life, polytomy resolution and date interpolation can be performed repeatedly to generate distributions of fully-dated complete trees. Dates are assigned from the available chronograms in the [Open Tree phylesystem](github.com/OpenTreeOfLife/phylesystem-1); where there are multiple dates available for a node, a date can be sampled at random or a median date can be used. Optionally, you can also compute a distribution of evolutionary distinctiveness scores for each leaf node (you can choose ED/EDGE or ED2/EDGE2).
 
-- The Python library chronosynth, available at https://github.com/OpenTreeOfLife/chronosynth/. This should be available in your PYTHONPATH.
+### Prerequisites:
 
-- A folder to cache the chronosynth output. By default we use `./chronosynth_date_info/`.
+- The Open Tree of Life. We require the tree in Newick form, available at … By default we look for a folder `./opentree16.1_tree/` containing the files `annotations.json` and `labelled_supertree/labelled_supertree_ottnames.tre`.
 
-## Usage:
+- The Open Tree Taxonomy. We require the tab-separated taxonomy file, available at … By default we look for a folder called `./ott3.7.3/` containing `taxonomy.tsv`.
+
+- The dates that will be assigned to the tree. We have included a cache of the dates we used to generate our dataset, in the file `chronosynth_date_info/node_ages.json`. This was generated on 19 February 2026. These dates come from chronograms in the Open Tree phylesystem database of trees, which anyone can contribute to. To update the cache with the latest available data, you require the Python package chronosynth, available at https://github.com/OpenTreeOfLife/chronosynth/. Then run `tree_loading.load_metadata(force_dates_refresh=True)`.
+
+- The Python packages `numpy` and `ete4`.
+
+### Usage:
 
 There are three options:
 
-1. The file main.py can be run from the command line. For available options run:
+1. The file `main.py` can be run from the command line. For available options run:
 `python main.py --help`.
 For example:
  `python main.py --num_trees=10 --pd_clades=pd_clades.txt`
@@ -31,12 +42,7 @@ will produce 10 trees with different topologies and a text file with phylogeneti
 
 3. A Jupyter notebook `edge2_notebook.ipynb` is included, which will open a Jupyter (IPython) notebook to step through the process of loading trees and computes EDGE2 scores.
 
-## Subtrees
-
-If you want to work with only a subtree or subset of species, see the notebook `getting_a_subtree.ipynb`.
-
-
-## Reproducing the pre-computed tree distributions
+### Reproducing the pre-computed tree distributions
 
 Should you wish to reproduce the distributions of trees used in the paper, you can use the following commands:
 

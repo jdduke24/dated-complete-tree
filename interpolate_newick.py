@@ -80,7 +80,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             """Interpolate missing dates (ages) on a given newick phylogenetic tree. Known ages should be listed
-            in the given ages file. Must include an age on the root node."""
+            in the given ages file. Leaf nodes without a date are assumed to have a date of 0. Must include an age on the root node."""
         )
     )
 
