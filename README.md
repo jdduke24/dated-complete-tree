@@ -6,7 +6,7 @@ This Python workflow contains code that takes the Open Tree of Life, resolves al
 
 A step-by-step example of the workflow on a small example tree of 64 species is available in the Python notebook [Worked_example.ipynb](https://github.com/dated-complete-tree/blob/main/Worked_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside this repository are required to work through the notebook.
 
-The notebook is also available in [pdf form](https://github.com/dated-complete-tree/blob/main/Worked_example.pdf) or as a plain [Python text file](https://github.com/dated-complete-tree/blob/main/Worked_example.py).
+The notebook is also available in [pdf form](https://github.com/jdduke24/dated-complete-tree/blob/main/Worked_example.pdf) or as a plain [Python text file](https://github.com/jdduke24/dated-complete-tree/blob/main/Worked_example.py).
 
 ## 2. Date interpolation only
 
@@ -18,7 +18,7 @@ By default the script looks for a tree file called `phylo` and a tab-separated f
 
 Pre-computed median trees of 2.3 million species and the accompanying tree distributions can be found [at the accompanying Zenodo dataset](https://doi.org/10.5281/zenodo.19049120).
 
-If you want a fully-dated tree but require only a subtree or subset of species, see the Python notebook [getting_a_subtree.ipynb](https://github.com/dated-complete-tree/blob/main/getting_a_subtree.ipynb).
+If you want a fully-dated tree but require only a subtree or subset of species, see the Python notebook [getting_a_subtree.ipynb](https://github.com/jdduke24/dated-complete-tree/blob/main/getting_a_subtree.ipynb).
 
 ## 4. The full workflow for generating trees
 
