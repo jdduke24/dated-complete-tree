@@ -1,22 +1,30 @@
-# dated-complete-tree
+# Assembling fully-dated complete trees of life
 
-Code that takes the Open Tree of Life, resolves all polytomies, assigns dates from available chronograms in the Open Tree database, and interpolates all missing dates. For a full explanation of the algorithms and the results of using them, see [this preprint](https://doi.org/10.64898/2026.03.05.709771).
+This Python workflow contains code that takes the Open Tree of Life, resolves all polytomies, assigns dates from available chronograms in the Open Tree database, and interpolates missing dates to produce fully-dated bifurcating trees. For a full explanation of the algorithms and the results of using them, see [this preprint](https://doi.org/10.64898/2026.03.05.709771).
 
-## 1. Date interpolation only
+## 1. Workflow example
 
-The algorithms for interpolating missing dates can be used independently of Open Tree, requiring only the `ete4` and `numpy` Python packages. The script `interpolate_newick.py` can be run from the command line. It takes a text file with a Newick tree and a text file with a list of node ages, interpolates missing dates, and writes out a Newick tree with branch lengths. Leaf nodes with no date are assumed to have a date of 0. The root node must be dated.
+A step-by-step example of the workflow on a small example tree of 64 species is available in the Python notebook [Worked_example.ipynb](Worked_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside this repository are required to work through the notebook.
 
-By default the script looks for a tree file called `phylo` and a tab-separated file of nodes and ages called `ages` - in this respect it behaves the same as the software `phylocom bladj`. The input files can instead be specified; for example `interpolate_newick.py --phylo=examples/Columbiformes.tre --ages=examples/Columbiformes_ages.txt`. See `interpolate_newick.py --help` for further options.
+The notebook is also available in [pdf form](Worked_example.pdf) or as a plain [Python text file](Worked_example.py).
 
-## 2. Working with the dataset rather than generating it
+## 2. Date interpolation only
 
-Pre-computed median trees and tree distributions can be found [at the accompanying Zenodo dataset](https://doi.org/10.5281/zenodo.19049120).
+The algorithms for interpolating missing dates on a tree can be used independently of this workflow and independently of Open Tree, via a command-line Python script requiring only the `ete4` and `numpy` Python packages. The script `interpolate_newick.py` takes a text file with a Newick tree and a text file with a list of node ages, interpolates missing dates, and writes out a Newick tree with branch lengths. Leaf nodes with no date are assumed to have a date of 0. The root node must be dated.
 
-If you want to use a fully-dated tree but require only a subtree or subset of species, see the Python notebook `getting_a_subtree.ipynb`.
+By default the script looks for a tree file called `phylo` and a tab-separated file of nodes and ages called `ages` (in this respect it behaves the same as the software `phylocom bladj`). The input files can instead be specified; for example `interpolate_newick.py --phylo=examples/Columbiformes.tre --ages=examples/Columbiformes_ages.txt`. See `interpolate_newick.py --help` for further options.
 
-## 3. Generating trees
+## 3. Working with the dataset rather than generating it
+
+Pre-computed median trees of 2.3 million species and the accompanying tree distributions can be found [at the accompanying Zenodo dataset](https://doi.org/10.5281/zenodo.19049120).
+
+If you want a fully-dated tree but require only a subtree or subset of species, see the Python notebook `getting_a_subtree.ipynb`.
+
+## 4. The full workflow for generating trees
 
 Starting with the Open Tree of Life, polytomy resolution and date interpolation can be performed repeatedly to generate distributions of fully-dated complete trees. Dates are assigned from the available chronograms in the [Open Tree phylesystem](github.com/OpenTreeOfLife/phylesystem-1); where there are multiple dates available for a node, a date can be sampled at random or a median date can be used. Optionally, you can also compute a distribution of evolutionary distinctiveness scores for each leaf node (you can choose ED/EDGE or ED2/EDGE2).
+
+![Workflow flow chart](examples/images/workflow.png)
 
 ### Prerequisites:
 
@@ -44,7 +52,7 @@ will produce 10 trees with different topologies and a text file with phylogeneti
 
 ### Reproducing the pre-computed tree distributions
 
-Should you wish to reproduce the distributions of trees used in the paper, you can use the following commands:
+Should you wish to reproduce the distributions of trees used in the paper, use the following commands:
 
 - equal_splits_topo.tar.gz: `python main.py --num_trees=501 --pd_clades=pd_clades.txt`
 

@@ -30,9 +30,7 @@
 
 
 import ete4
-import numpy as np
 from .taxonomy_utils import tx_levels
-from . import tree_fixing
 
 
 # create string from a list of dates, rounding the dates to 1 d.p.
