@@ -4,7 +4,7 @@ This Python workflow contains code that takes the Open Tree of Life, resolves al
 
 ## 1. Workflow example
 
-A step-by-step example of the workflow on a small example tree of 64 species is available in the Python notebook [Worked_example.ipynb](https://github.com/dated-complete-tree/blob/main/Workflow_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside this repository are required to work through the notebook.
+A step-by-step example of the workflow on a small example tree of 64 species is available in the Python notebook [Workflow_example.ipynb](https://github.com/jdduke24/dated-complete-tree/blob/main/Workflow_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside this repository are required to work through the notebook.
 
 The notebook is also available in [pdf form](https://github.com/jdduke24/dated-complete-tree/blob/main/Workflow_example.pdf) or as a plain [Python text file](https://github.com/jdduke24/dated-complete-tree/blob/main/Workflow_example.py).
 
