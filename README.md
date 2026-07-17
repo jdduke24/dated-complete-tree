@@ -4,9 +4,9 @@ This Python workflow contains code that takes the Open Tree of Life, resolves al
 
 ## 1. Workflow example
 
-A step-by-step example of the workflow on a small example tree of 64 species is available in the Python notebook [Worked_example.ipynb](Worked_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside this repository are required to work through the notebook.
+A step-by-step example of the workflow on a small example tree of 64 species is available in the Python notebook [Worked_example.ipynb](https://github.com/dated-complete-tree/blob/main/Worked_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside this repository are required to work through the notebook.
 
-The notebook is also available in [pdf form](Worked_example.pdf) or as a plain [Python text file](Worked_example.py).
+The notebook is also available in [pdf form](https://github.com/dated-complete-tree/blob/main/Worked_example.pdf) or as a plain [Python text file](https://github.com/dated-complete-tree/blob/main/Worked_example.py).
 
 ## 2. Date interpolation only
 
@@ -18,7 +18,7 @@ By default the script looks for a tree file called `phylo` and a tab-separated f
 
 Pre-computed median trees of 2.3 million species and the accompanying tree distributions can be found [at the accompanying Zenodo dataset](https://doi.org/10.5281/zenodo.19049120).
 
-If you want a fully-dated tree but require only a subtree or subset of species, see the Python notebook `getting_a_subtree.ipynb`.
+If you want a fully-dated tree but require only a subtree or subset of species, see the Python notebook [getting_a_subtree.ipynb](https://github.com/dated-complete-tree/blob/main/getting_a_subtree.ipynb).
 
 ## 4. The full workflow for generating trees
 
@@ -34,7 +34,7 @@ Starting with the Open Tree of Life, polytomy resolution and date interpolation 
 
 - The dates that will be assigned to the tree. We have included a cache of the dates we used to generate our dataset, in the file `chronosynth_date_info/node_ages.json`. This was generated on 19 February 2026. These dates come from chronograms in the Open Tree phylesystem database of trees, which anyone can contribute to. To update the cache with the latest available data, you require the Python package chronosynth, available at https://github.com/OpenTreeOfLife/chronosynth/. Then run `tree_loading.load_metadata(force_dates_refresh=True)`.
 
-- The Python packages `numpy` and `ete4`.
+- The Python packages `ete4` and `numpy`.
 
 ### Usage:
 
