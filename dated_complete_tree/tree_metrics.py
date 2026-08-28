@@ -31,7 +31,7 @@
 import gc
 import numpy as np
 
-from .taxonomy_utils import open_config_csv
+from .tree_fixing_utils import open_config_csv
 
 import logging
 logger = logging.getLogger(__name__)

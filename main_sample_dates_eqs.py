@@ -45,7 +45,7 @@ sys.setrecursionlimit(10000)
 # Load and prune tree
 
 # Load metadata for tree from Open Tree and Chronosynth
-dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
+phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 # Create ete4 tree structure for entire Open Tree of Life, with my annotations
 whole_tre = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa, tree_filename="output/dated_tree_topo_sample_407.tre", has_branch_lengths=True)
@@ -53,10 +53,6 @@ whole_tre = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa, tree_fil
 tree_metrics.compute_pd(whole_tre)
 
 base_pd = whole_tre.props["pd"]
-
-# whole_tre.write("output/test_tre.tre", parser=1, format_root_node=True)
-
-
 
 pd_clades = [cld.strip() for cld in list(open("pd_clades.txt"))]
 
@@ -88,6 +84,7 @@ for itr in range(num_itrs):
         node.props["imputed_date"] = False
         node.props["imputation_type"] = 0
 
+    dates = tree_loading.load_dates()
     date_sources = tree_dating.assign_dates(whole_tre, dates, sample_dates=True, rng=date_source_rng)
 
     # Date cleaning to ensure time consistency down the tree
@@ -106,4 +103,4 @@ for itr in range(num_itrs):
     results.append(whole_tre.props["pd"])
     tree_metrics.save_pd_for_clades(whole_tre, pd_clades, pd_dict, dates_dict, spp_dict)
 
-tree_metrics.write_pd_dists("output/fix_topo_407", pd_dict, dates_dict, spp_dict)
+tree_metrics.write_pd_dists("output/equal_splits_date", pd_dict, dates_dict, spp_dict)

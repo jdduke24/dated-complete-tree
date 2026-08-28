@@ -396,6 +396,10 @@ def impute_missing_dates(tre, l=1, m=0, use_logN_model=False, use_birth_model=Fa
     (m > 0) or younger (m < 0). Uses spacing along an exponential function, i.e. y = exp(m*x).
     Values of m between -2 and 2 are pretty sensible.
     """
+
+    # label longest and shortest paths through tree
+    date_labelling(tre)
+
     if use_logN_model or use_birth_model:
         def label_pct_dates(parent):
             if parent.is_leaf:

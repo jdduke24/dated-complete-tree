@@ -35,7 +35,7 @@ import sys
 from dated_complete_tree import tree_dating
 
 
-def interpolate_dates(args):
+def interpolate_newick(args):
     tre = ete4.Tree(args.phylo, parser=1)
 
     tree_dating.assign_dates_from_file(tre, args.ages)
@@ -45,8 +45,6 @@ def interpolate_dates(args):
     else:
         tree_dating.dq_date_removal(tre)
 
-    tree_dating.date_labelling(tre)
-
     if args.algo == "EQS-L":
         tree_dating.impute_missing_dates(tre)
     elif args.algo == "EQS-S":
@@ -55,7 +53,7 @@ def interpolate_dates(args):
         tree_dating.impute_missing_dates(tre, use_logN_model=True)
     elif args.algo == "BM":
         import numpy as np
-        date_interpolation_rng = np.random.default_rng(seed=1)
+        date_interpolation_rng = np.random.default_rng(seed=100)
         tree_dating.impute_missing_dates(tre, use_birth_model=True, rng=date_interpolation_rng)
     else:
         tree_dating.impute_missing_dates(tre, l=0.25)
@@ -107,7 +105,7 @@ def main():
                         action="store_true")
 
     args = parser.parse_args()
-    interpolate_dates(args)
+    interpolate_newick(args)
 
 
 if __name__ == "__main__":

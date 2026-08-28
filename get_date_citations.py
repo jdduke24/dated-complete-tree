@@ -28,9 +28,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+"""Get citations for the trees used in node_ages.json.
+Expects a local clone of the phylesystem repository - adjust the path in line 70.
+"""
+
 import json
 
-dates = json.load(open('chronosynth_date_info/node_ages.json'))
+dates = json.load(open('date_cache/node_ages.json'))
 
 my_dates = {}
 my_sources = {}
@@ -76,6 +80,5 @@ for source_tree in all_source_trees:
 
 refs_text.sort()
 
-fout = open('date_source_refs.txt', 'wt')
-fout.writelines(refs_text)
-fout.close()
+with open('date_source_refs.txt', 'wt') as fout:
+    fout.writelines(refs_text)

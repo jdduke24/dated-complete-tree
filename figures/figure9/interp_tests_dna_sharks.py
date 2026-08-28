@@ -33,7 +33,8 @@ import numpy as np
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
-from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_pruning
+from dated_complete_tree import tree_topology
 from dated_complete_tree import tree_dating
 from dated_complete_tree import tree_metrics
 
@@ -48,10 +49,10 @@ from copy import copy
 sys.setrecursionlimit(10000)
 
 # Load metadata for tree from Open Tree, Chronosynth and OneZoom
-dates, phylogeny_nodes, taxa, descr_years = tree_loading.load_metadata()
+phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 # Create ete4 tree structure for entire Open Tree of Life, with my annotations
-whole_tre_unmodified = tree_loading.build_and_annotate_tree(dates, phylogeny_nodes, taxa, descr_years, tree_filename="figures/figure7/frogs_dna_ott.tre", has_branch_lengths=True)
+whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa, tree_filename="figures/figure9/sharks_dna_ott.tre", has_branch_lengths=True)
 
 tree_dating.dq_date_removal(whole_tre_unmodified)
 
@@ -64,8 +65,8 @@ whole_tre = whole_tre_unmodified.copy()
 
 rng = np.random.default_rng(seed=1)
 
-tree_fixing.remove_subspecies(whole_tre, rng)
-tree_fixing.impute_species_into_empty_taxa(whole_tre)
+tree_pruning.remove_subspecies(whole_tre, rng)
+tree_pruning.impute_species_into_empty_taxa(whole_tre)
 
 tree_labelling.add_anc_ranks(whole_tre)
 tree_labelling.add_desc_ranks(whole_tre)
@@ -86,25 +87,25 @@ tree_labelling.populate_tofix_dict(whole_tre, tofix_dict, nmp_genus_dict)
 
 # Second, fix the topology based on the labels.
 # Fix steps 1 and 2.
-tree_fixing.fix_polyphyly(genus_dict, rng)
-tree_fixing.fix_polyphyly(nmp_genus_dict, rng)
+tree_topology.fix_polyphyly(genus_dict, rng)
+tree_topology.fix_polyphyly(nmp_genus_dict, rng)
 
-tree_fixing.remove_nonspecies_leaves(whole_tre)
+tree_topology.remove_nonspecies_leaves(whole_tre)
 
 # Find and label backbone for step 3, after steps 1 an 2 already fixed.
 tree_labelling.populate_tofix_bkb(whole_tre, tofix_dict, [])
 fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
 
 # Finally, fix step 3.
-tree_fixing.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
+tree_topology.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
 
-tree_fixing.remove_nonspecies_leaves(whole_tre)
+tree_topology.remove_nonspecies_leaves(whole_tre)
 
 # Last of all, polytomy resolution.
-tree_fixing.fix_all_polytomies(whole_tre, rng)
+tree_topology.fix_remaining_polytomies(whole_tre, rng)
 
 # Optional - mainly here because it's good for OneZoom: remove one-child nodes. Gives a fully bifurcating tree.
-whole_tre = tree_fixing.delete_one_child_nodes(whole_tre, maintain_branch_lengths=True)
+whole_tre = tree_topology.delete_one_child_nodes(whole_tre, maintain_branch_lengths=True)
 
 #####################################################################################################################
 
@@ -126,6 +127,28 @@ for leaf in whole_tre.get_leaves():
 
 print("Pendant mean:", np.mean(dists))
 print("Pendant median:", np.median(dists))
+
+def label_pct_dates(parent):
+    if parent.is_leaf():
+        results = [0,0,1]
+    elif not parent.date:
+        results = [1,0,0]
+    else:
+        results = [1,1,0]
+
+    for child in parent.children:
+        new_results = label_pct_dates(child)
+        results[0] += new_results[0]
+        results[1] += new_results[1]
+        results[2] += new_results[2]
+
+    parent.add_feature("child_tree_size", results[0])
+    parent.add_feature("num_dates", results[1])
+    parent.add_feature("num_leaves", results[2])
+
+    return results
+
+label_pct_dates(whole_tre)
 
 
 
@@ -211,9 +234,9 @@ for date_pct in date_pcts:
                                                             np.median(pendants[i]))
 
 
-fout = open("frogs_interp_with_medians.txt","w")
+fout = open("sharks_interp_with_medians.txt","w")
 
-clade = "Anura_ott991547"
+clade = "Chondrichthyes_ott278108"
 for date_pct in date_pcts:
     fout.write("%s\t%f\t%d\t%d\t%d" % (clade,
                                        date_pct,

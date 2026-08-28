@@ -29,7 +29,7 @@
 
 
 from dated_complete_tree import tree_loading
-from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_fixing_utils
 from dated_complete_tree import tree_dating
 from dated_complete_tree import tree_plotting
 
@@ -37,7 +37,7 @@ import random
 
 
 # Load metadata for tree from Open Tree, Chronosynth and OneZoom
-dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
+phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 test_tre = tree_loading.build_and_annotate_tree(phylogeny_nodes,
                                                 taxa,
@@ -96,7 +96,7 @@ test_tre.children[0].children[0].children[0].children[0].children[1].detach()
 C = test_tre.children[0].children[0].children[0].children[0].children[0].children[1]
 C.detach()
 
-new_node = tree_fixing.create_node("mrca")
+new_node = tree_fixing_utils.create_node("mrca")
 
 test_tre.children[0].children[0].children[0].children[0].children[0].add_child(new_node)
 new_node.add_child(C)

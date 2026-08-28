@@ -29,19 +29,6 @@
 
 
 import re
-from importlib.resources import files
-
-
-def open_config_csv(filename, default_basename):
-    """Open a config CSV in text mode with ``newline=''``.
-
-    If ``filename`` is ``None``, open the file ``default_basename`` from the
-    package's bundled ``config/`` directory. Otherwise treat ``filename`` as a
-    user-supplied filesystem path.
-    """
-    if filename is None:
-        return (files(__package__) / "config" / default_basename).open(newline="")
-    return open(filename, newline="")
 
 
 tx_levels = {
@@ -94,7 +81,7 @@ anything = r"[A-Za-z0-9αβγδεμθ\.,/&#?=:()<>+*_\[\]\-]"
 
 ottid = r"(ott[0-9]+)"
 
-# 0. standard name with x (extinct): x_Genus_species_ott1234. Mark as extinct and ignore.
+# 0. standard name with x to indicate hybrid: x_Genus_species_ott1234.
 name_regex.append("^x_(" + normal_name + "+)_(" + normal_name + "+)_" + ottid + "$")
 
 # 1. uncultured with sp. at end: uncultured_BL#AH_sp._ott1234. Use whole name as species; whole name without sp. as genus.
@@ -153,7 +140,7 @@ cf_name = set([13])
 
 initial_cf_name = set([6])
 
-def get_genus_and_species(name, ignore_extinct=True):
+def get_genus_and_species(name):
     """Take a node name for a species (or species subgroup or group) from the Open Tree of Life, and
     return a tuple with our best guess for the genus name and species name.
     """
@@ -161,14 +148,14 @@ def get_genus_and_species(name, ignore_extinct=True):
     for i, regex in enumerate(name_regex):
         m = re.search(name_regex[i], name)
         if m:
-            if i == 0 and ignore_extinct:
-                genus = "extinct"
-                species = "extinct"
+            if i == 0:
+                genus = "hybrid"
+                species = "hybrid"
                 break
-            elif i == 0: # include extinct
-                genus = m.group(1)
-                species = m.group(1) + " " + m.group(2)
-                break
+            # elif i == 0: # include extinct
+            #     genus = m.group(1)
+            #     species = m.group(1) + " " + m.group(2)
+            #     break
             elif i in standard_name:
                 genus = m.group(1)
                 species = m.group(1) + " " + m.group(2)

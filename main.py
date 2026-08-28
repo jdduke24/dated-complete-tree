@@ -36,7 +36,8 @@ import datetime
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
-from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_pruning
+from dated_complete_tree import tree_topology
 from dated_complete_tree import tree_dating
 from dated_complete_tree import tree_metrics
 
@@ -53,34 +54,34 @@ def generate_trees(args):
     sys.setrecursionlimit(10000)
 
     rng = np.random.default_rng(seed=1)
-    date_interpolation_rng = np.random.default_rng(seed=1)
+    date_interpolation_rng = np.random.default_rng(seed=100)
     date_source_rng = np.random.default_rng(seed=1)
 
     #####################################################################################################################
     # Load and prune tree
 
     # Load metadata for tree from Open Tree and Chronosynth
-    dates, phylogeny_nodes, taxa = tree_loading.load_metadata(date_cache=args.date_cache,
-                                                              annotations=args.annotations,
-                                                              taxonomy=args.taxonomy)
+    phylogeny_nodes, taxa = tree_loading.load_metadata(annotations=args.annotations,
+                                                       taxonomy=args.taxonomy)
 
     # Create ete4 tree structure for entire Open Tree of Life, with my annotations
     whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa, tree_filename=args.supertree)
 
-    tree_fixing.strip_birds(whole_tre_unmodified)
-    tree_fixing.strip_turtles(whole_tre_unmodified)
+    tree_pruning.remove_based_on_props(whole_tre_unmodified, ["extinct", "uncultured", "unidentified", "intergeneric", "hybrid"])
 
-    rng = np.random.default_rng(seed=1)
+    tree_pruning.strip_birds(whole_tre_unmodified)
+    tree_pruning.strip_turtles(whole_tre_unmodified)
 
-    tree_fixing.remove_subspecies(whole_tre_unmodified, rng)
-    tree_fixing.impute_species_into_empty_taxa(whole_tre_unmodified)
+    tree_pruning.remove_subspecies(whole_tre_unmodified, rng)
 
-    tree_fixing.fix_taxonomy_ordering(whole_tre_unmodified)
+    tree_pruning.impute_species_into_empty_taxa(whole_tre_unmodified)
 
-    tree_labelling.add_anc_ranks(whole_tre_unmodified)
-    tree_labelling.add_desc_ranks(whole_tre_unmodified)
+    tree_labelling.add_ancestral_ranks(whole_tre_unmodified)
+    tree_labelling.add_descendant_ranks(whole_tre_unmodified)
 
-    tree_fixing.forced_taxa_moves(whole_tre_unmodified)
+    tree_labelling.fix_taxonomy_ordering(whole_tre_unmodified)
+
+    tree_topology.forced_taxa_moves(whole_tre_unmodified)
 
     if args.pd_clades:
         topo_pd_clades = [cld.strip() for cld in list(open(args.pd_clades))]
@@ -101,11 +102,6 @@ def generate_trees(args):
                 both_pd_dict[clade] = []
                 both_dates_dict[clade] = []
                 both_spp_dict[clade] = []
-
-    if args.compute_ed:
-        topo_ed_scores = {}
-        if args.num_date_samples > 0:
-            both_ed_scores = {}
 
     itr_start = datetime.datetime.now()
 
@@ -133,28 +129,31 @@ def generate_trees(args):
 
         # Second, fix the topology based on the labels.
         # Fix steps 1 and 2.
-        tree_fixing.fix_polyphyly(genus_dict, rng)
-        tree_fixing.fix_polyphyly(nmp_genus_dict, rng)
+        tree_topology.fix_polyphyly(genus_dict, rng)
+        tree_topology.fix_polyphyly(nmp_genus_dict, rng)
 
-        tree_fixing.remove_nonspecies_leaves(whole_tre)
+        tree_topology.remove_nonspecies_leaves(whole_tre)
 
         # Find and label backbone for step 3, after steps 1 an 2 already fixed.
         tree_labelling.populate_tofix_bkb(whole_tre, tofix_dict, [])
         fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
 
         # Finally, fix step 3.
-        tree_fixing.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
+        tree_topology.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
 
-        tree_fixing.remove_nonspecies_leaves(whole_tre)
+        tree_topology.remove_nonspecies_leaves(whole_tre)
 
         # Last of all, polytomy resolution.
-        tree_fixing.fix_all_polytomies(whole_tre, rng)
+        tree_topology.fix_remaining_polytomies(whole_tre, rng)
 
         # Remove one-child nodes. Gives a fully bifurcating tree.
-        whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
+        whole_tre = tree_topology.delete_one_child_nodes(whole_tre)
 
         #####################################################################################################################
         # Assign and interpolate median dates
+
+        # Load dates from json
+        dates = tree_loading.load_dates()
 
         # Assign dates
         tree_dating.assign_dates(whole_tre, dates)
@@ -163,7 +162,6 @@ def generate_trees(args):
         tree_dating.dq_date_removal(whole_tre)
 
         # Date imputation
-        tree_dating.date_labelling(whole_tre)
         if args.use_birth_model:
             tree_dating.impute_missing_dates(whole_tre, use_birth_model=True, rng=date_interpolation_rng)
         else:
@@ -172,9 +170,6 @@ def generate_trees(args):
         # All nodes now dated - set dists in ete and write out tree.
         tree_dating.compute_branch_lengths(whole_tre)
         tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_topo_sample_%d.tre" % (args.output_folder, args.output_tree_filename, n+1))
-
-        if args.compute_ed:
-            tree_metrics.compute_ed_scores(whole_tre, topo_ed_scores)
 
         if args.pd_clades:
             tree_metrics.compute_pd(whole_tre)
@@ -196,7 +191,6 @@ def generate_trees(args):
             tree_dating.dq_date_removal(whole_tre)
 
             # Date imputation
-            tree_dating.date_labelling(whole_tre)
             if args.use_birth_model:
                 tree_dating.impute_missing_dates(whole_tre, use_birth_model=True, rng=date_interpolation_rng)
             else:
@@ -206,23 +200,12 @@ def generate_trees(args):
             tree_dating.compute_branch_lengths(whole_tre)
             tree_dating.write_tree_with_branch_lengths(whole_tre, filename="%s/%s_both_sample_%d.tre" % (args.output_folder, args.output_tree_filename, n*args.num_date_samples+s+1))
 
-            if args.compute_ed:
-                tree_metrics.compute_ed_scores(whole_tre, both_ed_scores)
-
             if args.pd_clades:
                 tree_metrics.compute_pd(whole_tre)
                 tree_metrics.save_pd_for_clades(whole_tre, both_pd_clades, both_pd_dict, both_dates_dict, both_spp_dict)
 
         del whole_tre
         gc.collect()
-
-
-    if args.compute_ed:
-        print("Writing out ED score distributions for all species (takes ~5 minutes)")
-        tree_metrics.write_ed_scores("%s/%s_topo_ed_scores.txt" % (args.output_folder, args.output_tree_filename), topo_ed_scores)
-
-        if args.num_date_samples > 0:
-            tree_metrics.write_ed_scores("%s/%s_both_ed_scores.txt" % (args.output_folder, args.output_tree_filename), both_ed_scores)
 
     if args.pd_clades:
         tree_metrics.write_pd_dists("%s/%s_topo" % (args.output_folder, args.output_tree_filename), topo_pd_dict, topo_dates_dict, topo_spp_dict)
@@ -250,7 +233,7 @@ def main():
                         default=0)
 
     parser.add_argument("--output_folder",
-                        help="Path of folder where output trees will be written in Newick format, Default: output",
+                        help="Path of folder where output trees will be written in Newick format. Will be created if it does not exist. Default: output",
                         default="output")
 
     parser.add_argument("--output_tree_filename",
@@ -262,8 +245,8 @@ def main():
                         default="opentree16.1_tree/labelled_supertree/labelled_supertree_ottnames.tre")
 
     parser.add_argument("--date_cache",
-                        help="Path of the date cache generated by Chronosynth. Default: chronosynth_date_info/node_ages.json",
-                        default="chronosynth_date_info/node_ages.json")
+                        help="Path of the date cache generated by Chronosynth. Default: date_cache/node_ages.json",
+                        default="date_cache/node_ages.json")
 
     parser.add_argument("--annotations",
                         help="Path of the annotations.json file from the Open Tree of Life. Default: opentree16.1_tree/annotations.json",
@@ -280,10 +263,6 @@ def main():
     parser.add_argument("--pd_clades",
                         help="Path of a text file containing a list of node names (one on each line) for which to output PD estimates. Default: None",
                         default=None)
-
-    parser.add_argument("--compute_ed",
-                        help="Flag: whether to compute a distribution of ED scores. A csv file summarising the scores will be placed in the output folder. Default: False",
-                        action="store_true")
 
     args = parser.parse_args()
     generate_trees(args)

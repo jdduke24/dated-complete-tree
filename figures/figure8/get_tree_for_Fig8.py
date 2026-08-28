@@ -32,7 +32,9 @@ import sys
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
-from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_fixing_utils
+from dated_complete_tree import tree_pruning
+from dated_complete_tree import tree_topology
 from dated_complete_tree import tree_dating
 
 from taxonomy_utils import tx_levels
@@ -44,34 +46,36 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.ERROR)
 
-sys.setrecursionlimit(10000)
 
-
+###################################################################
 # This creates the tree which is plotted by phylo_mpl_narrow.py
 
+sys.setrecursionlimit(10000)
 
-# Load metadata for tree from Open Tree, Chronosynth and OneZoom
-dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
+rng = np.random.default_rng(seed=1)
 
-# Create ETE4 tree structure for entire Open Tree of Life, with my annotations
-whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes,
-                                                            taxa)
+phylogeny_nodes, taxa = tree_loading.load_metadata()
 
-tree_fixing.strip_birds(whole_tre_unmodified)
-tree_fixing.strip_turtles(whole_tre_unmodified)
+# Create ete4 tree structure for entire Open Tree of Life, with my annotations
+whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa)
 
-rng = np.random.default_rng(seed=10000)
+tree_pruning.remove_based_on_props(whole_tre_unmodified, ["extinct", "uncultured", "unidentified", "intergeneric", "hybrid"])
 
-tree_fixing.remove_subspecies(whole_tre_unmodified, rng)
-tree_fixing.impute_species_into_empty_taxa(whole_tre_unmodified)
+tree_pruning.strip_birds(whole_tre_unmodified)
+tree_pruning.strip_turtles(whole_tre_unmodified)
 
-tree_fixing.fix_taxonomy_ordering(whole_tre_unmodified)
+tree_pruning.remove_subspecies(whole_tre_unmodified, rng)
 
-tree_labelling.add_anc_ranks(whole_tre_unmodified)
-tree_labelling.add_desc_ranks(whole_tre_unmodified)
+tree_pruning.impute_species_into_empty_taxa(whole_tre_unmodified)
 
-tree_fixing.forced_taxa_moves(whole_tre_unmodified)
+tree_labelling.add_ancestral_ranks(whole_tre_unmodified)
+tree_labelling.add_descendant_ranks(whole_tre_unmodified)
 
+tree_labelling.fix_taxonomy_ordering(whole_tre_unmodified)
+
+tree_topology.forced_taxa_moves(whole_tre_unmodified)
+
+# put names on some common ancestors whose names had been removed by the synthesis
 for node in whole_tre_unmodified.search_nodes(name="mrcaott4101ott21309"):
     node.name = "Rotifera_ott471706"
     node.props["tx_level"] = "phylum"
@@ -111,33 +115,27 @@ tree_labelling.populate_tofix_dict(whole_tre, tofix_dict, nmp_genus_dict)
 
 # Second, fix the topology based on the labels.
 # Fix steps 1 and 2.
-tree_fixing.fix_polyphyly(genus_dict, rng)
-tree_fixing.fix_polyphyly(nmp_genus_dict, rng)
+tree_topology.fix_polyphyly(genus_dict, rng)
+tree_topology.fix_polyphyly(nmp_genus_dict, rng)
 
-tree_fixing.remove_nonspecies_leaves(whole_tre)
+tree_topology.remove_nonspecies_leaves(whole_tre)
 
 # Find and label backbone for step 3, after steps 1 an 2 already fixed.
 tree_labelling.populate_tofix_bkb(whole_tre, tofix_dict, [])
 fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
 
 # Finally, fix step 3.
-tree_fixing.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
+tree_topology.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
 
-tree_fixing.remove_nonspecies_leaves(whole_tre)
+tree_topology.remove_nonspecies_leaves(whole_tre)
 
 # Last of all, polytomy resolution.
-tree_fixing.fix_all_polytomies(whole_tre, rng)
+tree_topology.fix_remaining_polytomies(whole_tre, rng)
 
-# for node in whole_tre.search_nodes(name="Loricifera_ott199402"):
-#     lori = node
-#     break
+# don't remove one-child nodes yet - we want the taxonomic info
 
-# tmp = lori.children[0].copy()
-
-# lori.add_child(tmp)
-
-# Optional - mainly here because it's good for OneZoom: remove one-child nodes. Gives a fully bifurcating tree.
-# whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
+# Load dates from json
+dates = tree_loading.load_dates()
 
 # Date imputation
 tree_dating.assign_dates(whole_tre, dates)
@@ -146,24 +144,19 @@ tree_dating.assign_dates(whole_tre, dates)
 tree_dating.dq_date_removal(whole_tre)
 
 # Date imputation
-tree_dating.date_labelling(whole_tre)
 tree_dating.impute_missing_dates(whole_tre, l=0.25)
 
 tree_dating.compute_branch_lengths(whole_tre)
 
-# lori.children[1].detach()
-
 for node in whole_tre.traverse():
     if node is not whole_tre and node.dist < 0:
         print(node.name, node.dist)
-
 
 # import tree_metrics
 tree_metrics.compute_pd(whole_tre)
 
 
 # ######### compute percentages of nodes with dates, cut to phylum or below, plot
-
 
 def label_pct_dates(parent):
     if parent.is_leaf:
@@ -187,8 +180,6 @@ def label_pct_dates(parent):
 
 label_pct_dates(whole_tre)
 
-
-# whole_tre = whole_tre_orig.copy()
 
 def get_nodes_for_trimming(parent, to_remove, keep_branches=True):
     # if parent.props["num_leaves"] < 10:
@@ -223,7 +214,7 @@ for node in to_remove:
     print(node.name, node.props["ph_tx"], node.props["tx_level"], node.props["desc_rank"], node.props["num_leaves"])
 
 for node in to_remove:
-    tree_fixing.remove_tree_below(node)
+    tree_fixing_utils.remove_tree_below(node)
 
     if tx_levels[node.props["tx_level"]] == tx_levels["species"] or tx_levels[node.props["tx_level"]] == tx_levels["mrca"]:
         node.detach()
@@ -232,14 +223,12 @@ for node in whole_tre:
     if node.props["ph_tx"] == "TX" and "Loricifera" not in node.name and "Nematomorpha" not in node.name:
         node.detach()
 
-whole_tre = tree_fixing.delete_one_child_nodes(whole_tre, maintain_branch_lengths=True)
+whole_tre = tree_topology.delete_one_child_nodes(whole_tre, maintain_branch_lengths=True)
 
 print("---------")
 for leaf in whole_tre.leaves():
     print(leaf.name, leaf.props["ph_tx"], leaf.props["tx_level"], leaf.props["desc_rank"], leaf.props["num_leaves"])
 
-# tree_plotting.plot_big_tree(whole_tre, "figures/figure3/test_horiz_4.svg", scale=0.2)
-
 import pickle
-with open('figures/figure3/tree_test.pickle', 'wb') as f:
+with open('figures/figure3/tree_for_fig8.pickle', 'wb') as f:
     pickle.dump(whole_tre, f, pickle.HIGHEST_PROTOCOL)

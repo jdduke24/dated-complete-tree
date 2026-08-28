@@ -146,7 +146,7 @@ for i in range(1,len(indents)):
 ############
 # Data for topological variation
 
-fin = open("figures/figure9/dated_tree_topo_pd_for_clades.txt", 'r')
+fin = open("figures/figure9/birth_model_topo_pd_for_clades.txt", 'r')
 
 phyla_pd_med = []
 phyla_pd_low = []
@@ -199,7 +199,7 @@ phyla_pd_upp.reverse()
 ############
 # Data for date variation
 
-fin = open("figures/figure9/dated_tree_date_pd_for_clades.txt", 'r')
+fin = open("figures/figure9/birth_model_date_pd_for_clades.txt", 'r')
 
 dates_phyla_pd_med = []
 dates_phyla_pd_low = []
@@ -250,7 +250,7 @@ dates_phyla_pd_upp.reverse()
 
 ############
 # Data for median pds
-fin = open("figures/figure9/dated_tree_both_pd_for_clades.txt", 'r')
+fin = open("figures/figure9/birth_model_both_pd_for_clades.txt", 'r')
 
 both_phyla_pd_med = []
 both_phyla_pd_low = []
@@ -339,11 +339,17 @@ for i in range(len(names)-1):
     ax0.text(col_x[1], i+0.95, "%d" % round(phyla_pd_med[i],0), horizontalalignment="right", verticalalignment="center", family=["Arial"], fontsize="x-small")
     ax0.text(col_x[2], i+0.95, "%d - %d" % (round(phyla_pd_low[i],0), round(phyla_pd_upp[i],0)), horizontalalignment="center", verticalalignment="center", family=["Arial"], fontsize="x-small")
 
+    print(names[i], "%d - %d" % (round(phyla_pd_low[i],0), round(phyla_pd_upp[i],0)))
+
     ax0.text(col_x[3], i+0.95, "%d" % round(dates_phyla_pd_med[i],0), horizontalalignment="right", verticalalignment="center", family=["Arial"], fontsize="x-small")
     ax0.text(col_x[4], i+0.95, "%d - %d" % (round(dates_phyla_pd_low[i],0), round(dates_phyla_pd_upp[i],0)), horizontalalignment="center", verticalalignment="center", family=["Arial"], fontsize="x-small")
 
+    print(names[i], "%d - %d" % (round(dates_phyla_pd_low[i],0), round(dates_phyla_pd_upp[i],0)))
+
     ax0.text(col_x[5], i+0.95, "%d" % round(both_phyla_pd_med[i],0), horizontalalignment="right", verticalalignment="center", family=["Arial"], fontsize="x-small")
     ax0.text(col_x[6], i+0.95, "%d - %d" % (round(both_phyla_pd_low[i],0), round(both_phyla_pd_upp[i],0)), horizontalalignment="center", verticalalignment="center", family=["Arial"], fontsize="x-small")
+
+    print(names[i], "%d - %d" % (round(both_phyla_pd_low[i],0), round(both_phyla_pd_upp[i],0)))
 
     ax0.axhline(i+0.5, color=grey, lw=0.5, zorder=1000)
 
@@ -397,5 +403,5 @@ ax0.set_ylim(0,len(names)+1.5)
 ax0.set_frame_on(False)
 
 fig.tight_layout()
-fig.savefig("figures/figure9/pd_table_tight.pdf")
-fig.savefig("figures/figure9/pd_table_tight.tif", dpi=300)
+fig.savefig("figures/figure9/birth_pd_table_tight.pdf")
+fig.savefig("figures/figure9/birth_pd_table_tight.tif", dpi=300)

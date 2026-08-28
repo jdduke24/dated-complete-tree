@@ -1,38 +1,72 @@
 # Assembling fully-dated complete trees of life
 
-This Python workflow contains code that takes the Open Tree of Life, resolves all polytomies, assigns dates from available chronograms in the Open Tree database, and interpolates missing dates to produce fully-dated bifurcating trees. For a full explanation of the algorithms and the results of using them, see [this preprint](https://doi.org/10.64898/2026.03.05.709771).
+This Python workflow takes the Open Tree of Life, resolves all polytomies, assigns dates from available chronograms in the Open Tree database, and interpolates missing dates to produce fully-dated bifurcating trees.
 
-## 1. Workflow example
+For a full explanation of the algorithms and the results of using them, see [this preprint](https://doi.org/10.64898/2026.03.05.709771). If you make use this software, please cite that paper. Send questions to j.duke24@imperial.ac.uk.
 
-A step-by-step example of the workflow on a small example tree of 43 species is available in the Python notebook [Workflow_example.ipynb](https://github.com/jdduke24/dated-complete-tree/blob/main/Workflow_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside this repository are required to work through the notebook.
+## Contents of this Readme
+1. Installation
+2. Workflow example
+3. Date interpolation only
+4. Working with the dataset rather than generating it
+5. The full workflow for generating trees
+6. Figures in the paper
+7. Workflow files and diagram
+
+## 1. Installation
+
+Download and extract the [latest release](https://github.com/jdduke24/dated-complete-tree/releases/tag/mee_workflow_v1.1), or clone the git repository:
+`git clone https://github.com/jdduke24/dated-complete-tree.git`
+
+To avoid future dependency problems, we suggest installation and use in a virtual environment. For example, run the following in a shell from the folder you extracted:
+```
+virtualenv -p python3 venv-datedtrees
+source venv-datedtrees/bin/activate
+pip install -r requirements.txt
+pip install -e .
+```
+then run `deactivate` when finished.
+
+Or if you prefer, install the `ete4` and `numpy` packages via pip or conda or your favourite package manager, then use the workflow scripts directly from the folder you extracted.
+
+## 2. Workflow example
+
+A step-by-step example of the workflow on a small example tree of 43 species is available in the IPython notebook [Workflow_example.ipynb](https://github.com/jdduke24/dated-complete-tree/blob/main/Workflow_example.ipynb). This requires the Python packages `ete4` and `numpy`, but no further data downloads outside the repository are required to work through the notebook.
 
 The notebook is also available in [pdf form](https://github.com/jdduke24/dated-complete-tree/blob/main/Workflow_example.pdf) or as a plain [Python text file](https://github.com/jdduke24/dated-complete-tree/blob/main/Workflow_example.py).
 
-## 2. Date interpolation only
+## 3. Date interpolation only
 
-The algorithms for interpolating missing dates on a tree can be used independently of this workflow and independently of Open Tree, via a command-line Python script requiring only the `ete4` and `numpy` Python packages. The script `interpolate_newick.py` takes a text file with a Newick tree and a text file with a list of node ages, interpolates missing dates, and writes out a Newick tree with branch lengths. Leaf nodes with no date are assumed to have a date of 0. The root node must be dated.
+The algorithms for interpolating missing dates on a tree can be used independently of this workflow and independently of Open Tree, via a command-line Python script requiring only the `ete4` and `numpy` Python packages.
 
-By default the script looks for a tree file called `phylo` and a tab-separated file of nodes and ages called `ages` (in this respect it behaves the same as the software `phylocom bladj`). The input files can instead be specified; for example `interpolate_newick.py --phylo=examples/Columbiformes.tre --ages=examples/Columbiformes_ages.txt`. See `interpolate_newick.py --help` for further options.
+The script `interpolate_newick.py` takes a text file with a Newick tree and a text file with a list of node ages as inputs, interpolates missing dates, and writes out a Newick tree with branch lengths. Leaf nodes with no date are assumed to have a date of 0. The root node must be dated.
 
-## 3. Working with the dataset rather than generating it
+By default the script looks for a tree file called `phylo` and a tab-separated file of nodes and ages called `ages` (in this respect it behaves the same as the software `phylocom bladj`).
+
+The input files can instead be specified; an example tree and dates file are included:
+`interpolate_newick.py --phylo=examples/Columbiformes.tre --ages=examples/Columbiformes_ages.txt`.
+
+See `interpolate_newick.py --help` for further options, including the choices of interpolation algorithm.
+
+## 4. Working with the dataset rather than generating it
 
 Pre-computed median trees of 2.3 million species and the accompanying tree distributions can be found [at the accompanying Zenodo dataset](https://doi.org/10.5281/zenodo.19049120).
 
-If you want a fully-dated tree but require only a subtree or subset of species, see the Python notebook [getting_a_subtree.ipynb](https://github.com/jdduke24/dated-complete-tree/blob/main/getting_a_subtree.ipynb).
+If you want a fully-dated tree but require only a subtree or subset of species, see the IPython notebook [getting_a_subtree.ipynb](https://github.com/jdduke24/dated-complete-tree/blob/main/getting_a_subtree.ipynb).
 
-## 4. The full workflow for generating trees
+## 5. The full workflow for generating trees
 
-Starting with the Open Tree of Life, polytomy resolution and date interpolation can be performed repeatedly to generate distributions of fully-dated complete trees. Dates are assigned from the available chronograms in the [Open Tree phylesystem](github.com/OpenTreeOfLife/phylesystem-1); where there are multiple dates available for a node, a date can be sampled at random or a median date can be used. Optionally, you can also compute a distribution of evolutionary distinctiveness scores for each leaf node (you can choose ED/EDGE or ED2/EDGE2).
+The workflow is based around the Open Tree of Life ecosystem. Starting with the Open Tree of Life supertree (or a subtree, or a tree generated by the [Open Tree Custom Synthesis engine](https://ot38.opentreeoflife.org/v3/tree_of_life/launch_custom)), polytomy resolution and date interpolation can be performed repeatedly to generate distributions of fully-dated complete trees.
 
-![Workflow flow chart](examples/images/workflow.png)
+Dates are assigned from the available chronograms in the [Open Tree phylesystem](github.com/OpenTreeOfLife/phylesystem-1); where there are multiple dates available for a node, a date can be sampled at random or a median date can be used.
 
 ### Prerequisites:
 
-- The Open Tree of Life. We require the tree in Newick form, available at … By default we look for a folder `./opentree16.1_tree/` containing the files `annotations.json` and `labelled_supertree/labelled_supertree_ottnames.tre`.
+- The Open Tree of Life. We require a tree in Newick form; the Open Tree super tree and its annotations are in the "Trees and annotations" release available [here](https://tree.opentreeoflife.org/about/synthesis-release/). By default we look for a folder `./opentree16.1_tree/` containing the files `annotations.json` and `labelled_supertree/labelled_supertree_ottnames.tre`.
 
-- The Open Tree Taxonomy. We require the tab-separated taxonomy file, available at … By default we look for a folder called `./ott3.7.3/` containing `taxonomy.tsv`.
+- The Open Tree Taxonomy. We require the tab-separated taxonomy file, available in the taxonomy release [here](https://tree.opentreeoflife.org/about/taxonomy-version/). By default we look for a folder called `./ott3.7.3/` containing `taxonomy.tsv`.
 
-- The dates that will be assigned to the tree. We have included a cache of the dates we used to generate our dataset, in the file `chronosynth_date_info/node_ages.json`. This was generated on 19 February 2026. These dates come from chronograms in the Open Tree phylesystem database of trees, which anyone can contribute to. To update the cache with the latest available data, you require the Python package chronosynth, available at https://github.com/OpenTreeOfLife/chronosynth/. Then run `tree_loading.load_metadata(force_dates_refresh=True)`.
+- The dates that will be assigned to the tree. We have included a cache of the dates we used to generate our dataset, in the file `date_cache/node_ages.json`. This was generated on 19 February 2026. These dates come from chronograms in the Open Tree phylesystem database of trees, which anyone can contribute to. To update the cache with the latest available data, you require the Python package chronosynth, available at [https://github.com/OpenTreeOfLife/chronosynth/](https://github.com/OpenTreeOfLife/chronosynth/). Then run `tree_loading.load_metadata(force_dates_refresh=True)`.
 
 - The Python packages `ete4` and `numpy`.
 
@@ -44,20 +78,85 @@ There are three options:
 `python main.py --help`.
 For example:
  `python main.py --num_trees=10 --pd_clades=pd_clades.txt`
-will produce 10 trees with different topologies and a text file with phylogenetic diversity (PD) distributions for the clades specified in your text file `./pd_clades.txt` (one Open Tree node name per line, e.g. Eukaryota_ott304358). The default output folder for the Newick-format trees and the PD file is `./output/`.
+will produce 10 trees with different topologies and a text file with phylogenetic diversity (PD) distributions for the clades specified in the text file `pd_clades.txt` (one Open Tree node name per line, e.g. Eukaryota_ott304358). The default output folder for the Newick-format trees and the PD file is `./output/`.
 
-2. The file `main_non_exec.py` contains code you can edit and run from your favourite Python IDE.
+2. The file `main_non_exec.py` contains code you can edit and run from your preferred Python IDE.
 
-3. A Jupyter notebook `edge2_notebook.ipynb` is included, which will open a Jupyter (IPython) notebook to step through the process of loading trees and computes EDGE2 scores.
+3. An IPython notebook `edge2_notebook.ipynb` is included, which steps through the process of loading trees and computes EDGE2 scores.
 
 ### Reproducing the pre-computed tree distributions
 
-Should you wish to reproduce the distributions of trees used in the paper, use the following commands:
+Should you wish to reproduce the distributions of trees used in the paper, use the following commands. On a standard laptop, the full set of 1503 tree in the equal_splits_both.tar.gz file took around 3 days to generate.
 
-- equal_splits_topo.tar.gz: `python main.py --num_trees=501 --pd_clades=pd_clades.txt`
+- equal_splits_topo.tar.gz: `python main.py --num_trees=501 --pd_clades=pd_clades.txt`. Expected run time 
 
 - equal_splits_both.tar.gz: `python main.py --num_trees=501 --num_date_samples=3 --pd_clades=pd_clades.txt`
 
 - birth_model_topo.tar.gz: `python main.py --use_birth_model --num_trees=101 --pd_clades=pd_clades.txt`
 
 - birth_model_both.tar.gz: `python main.py --use_birth_model --num_trees=101 --num_date_samples=3 --pd_clades=pd_clades.txt`
+
+- To generate equal_splits_date.tar.gz: we require the median equal splits tree from the [dataset accompanying the paper](https://doi.org/10.64898/2026.03.05.709771). This is also tree number 407 in equal_splits_both.tar.gz. Having downloaded the tree, run the code in `main_sample_dates_eqs.py`.
+
+- To generate birth_model_date.tar.gz: we require the median birth model tree from the [dataset accompanying the paper](https://doi.org/10.64898/2026.03.05.709771). This is also tree number 24 in birth_model_both.tar.gz. Having downloaded the tree, run the code in `main_sample_dates_birth.py`.
+
+### Parameters for each interpolation algorithm
+
+- EQS-L: `tree_dating.impute_missing_dates(tree)`
+- EQS-S: `tree_dating.impute_missing_dates(tree, l=0)`
+- EQS-LS: `tree_dating.impute_missing_dates(tree, l=0.25)`
+- LnN: `tree_dating.impute_missing_dates(tree, use_logN_model=True)`
+- Birth model: `tree_dating.impute_missing_dates(tree, use_birth_model=True, rng=np.random.default_rng())`
+
+## 6. Figures in the paper
+
+The figures folder contains the code used to generate each figure in the paper, with the exception of figures 1, 4, 6 and 10 that were created by hand.
+
+## 7. Workflow files and diagram
+
+Python files in the root folder:
+
+- interpolate_newick.py: command line script to interpolate dates on a Newick tree; see section 3 above.
+- main.py: command line script to generate tree distributions; see section 5 above.
+- main_non_exec.py: Python script to run the workflow in your preferred Python environment. See workflow diagram below for the sequence of Python functions in the file.
+
+IPython notebooks:
+
+- Workflow_example.ipynb: worked example of the workflow, with no external data requirements.
+- getting_a_subtree.ipynb: worked example of extracting a subtree of a complete dated tree.
+- edge2_notebook: example of generating distributions of EDGE2 scores (for conservation prioritisation) for all species in a tree.
+
+Python modules in the `dated_complete_tree` package:
+- tree_loading.py: Associated with workflow step 1: Load the tree and associated metadata.
+- tree_pruning.py: Associated with workflow step 2: Prune to tree to extant species.
+- tree_topology.py : Associated with workflow step 3: Resolve the polytomies in the tree.
+- tree_dating.py: Associated with workflow step 4: Dating the tree.
+- tree_labelling.py: Place labels on the tree as ete4 properties; for example, the function `add_ancestral_ranks()` adds to each ranked node a label storing the taxonomic rank of the nearest ancestral ranked node, to help us understand our position in the taxonomic hierarchy in the tree. Functions in this module do not modify the topology of the tree.
+- tree_metrics.py: Compute metrics such as phylogenetic diversity and evolutionary distinctiveness.
+- tree_checks.py: Perform checks on the tree structure, such as whether any subspecies are present or whether the tree is entirely bifurcating.
+- tree_plotting.py: Use the Qt-based plotting engine to plot trees.
+- tree_fixing_utils.py: Functions used across both pruning and polygamy resolution, to alter the topology of the tree.
+- taxonomy_utils.py: Data and functions for working with the taxonomic hierarchy in the tree.
+- config folder: configuration files used by the pruning process.
+
+Other folders:
+
+Python modules in the `dated_complete_tree` package:
+- tree_loading.py: Associated with workflow step 1: Load the tree and associated metadata.
+- tree_pruning.py: Associated with workflow step 2: Prune to tree to extant species.
+- tree_topology.py : Associated with workflow step 3: Resolve the polytomies in the tree.
+- tree_dating.py: Associated with workflow step 4: Dating the tree.
+- tree_labelling.py: Place labels on the tree as ete4 properties; for example, the function `add_ancestral_ranks()` adds to each ranked node a label storing the taxonomic rank of the nearest ancestral ranked node, to help us understand our position in the taxonomic hierarchy in the tree. Functions in this module do not modify the topology of the tree.
+- tree_metrics.py: Compute metrics such as phylogenetic diversity and evolutionary distinctiveness.
+- tree_checks.py: Perform checks on the tree structure, such as whether any subspecies are present or whether the tree is entirely bifurcating.
+- tree_plotting.py: Use the Qt-based plotting engine to plot trees.
+- tree_fixing_utils.py: Functions used across both pruning and polygamy resolution, to alter the topology of the tree.
+- taxonomy_utils.py: Data and functions for working with the taxonomic hierarchy in the tree.
+- config folder: configuration files used by the pruning process.
+
+Other folders:
+- date_cache folder: contains the node_ages.json cache file which stores the dates we used in the paper. Updated cache files with the most recent data from the Open Tree database can be generated by the package [Chronosynth](https://github.com/OpenTreeOfLife/chronosynth/).
+- examples folder: some example trees used by the illustrative IPython notebooks.
+
+Diagram of the workflow:
+![Workflow flow chart](examples/images/workflow.png)

@@ -38,10 +38,10 @@ cmc = 0
 
 # Date reproduction errors
 
-with open('figures/figure7/fullydated_avgs.pickle', 'rb') as f:
+with open('figures/figure9/fullydated_avgs.pickle', 'rb') as f:
     fx, fy = pickle.load(f)
 
-with open('figures/figure7/classes_avgs.pickle', 'rb') as f:
+with open('figures/figure9/classes_avgs.pickle', 'rb') as f:
     cx, cy = pickle.load(f)
 
 algos = ["EQS-L", "EQS-S", "LnN", "BM", "EQS-LS"]
@@ -90,10 +90,10 @@ ax.text(50,19, 'Partially-dated clades', family=["Arial"], horizontalalignment="
 
 # Pendant edge means
 
-with open('figures/figure7/fullydated_pens.pickle', 'rb') as f:
+with open('figures/figure9/fullydated_pens.pickle', 'rb') as f:
     fx, fy = pickle.load(f)
 
-with open('figures/figure7/classes_pens.pickle', 'rb') as f:
+with open('figures/figure9/classes_pens.pickle', 'rb') as f:
     cx, cy = pickle.load(f)
 
 ax = fig.add_subplot(3,2,3)
@@ -138,10 +138,10 @@ ax.text(95, ymax*0.95, "B2", fontsize="large", family=["Arial"], fontweight="bol
 
 # Pendant edge medians
 
-with open('figures/figure7/fullydated_penmeds.pickle', 'rb') as f:
+with open('figures/figure9/fullydated_penmeds.pickle', 'rb') as f:
     fx, fy = pickle.load(f)
 
-with open('figures/figure7/classes_penmeds.pickle', 'rb') as f:
+with open('figures/figure9/classes_penmeds.pickle', 'rb') as f:
     cx, cy = pickle.load(f)
 
 ax = fig.add_subplot(3,2,5)
@@ -180,7 +180,7 @@ ymin, ymax = ax.get_ylim()
 ax.text(95, ymax*0.95, "B3", fontsize="large", family=["Arial"], fontweight="bold", verticalalignment="top", horizontalalignment="right")
 
 fig.tight_layout()
-fig.savefig("figures/figure7/figure_interp_compare_narrow.svg")
-fig.savefig("figures/figure7/figure_interp_compare_narrow.tif", dpi=300)
+fig.savefig("figures/figure9/figure_interp_compare_narrow.svg")
+fig.savefig("figures/figure9/figure_interp_compare_narrow.tif", dpi=300)
 
 plt.close()

@@ -31,7 +31,8 @@
 import numpy as np
 
 from dated_complete_tree import tree_labelling
-from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_fixing_utils
+from dated_complete_tree import tree_topology
 from dated_complete_tree import tree_dating
 from dated_complete_tree import tree_plotting
 
@@ -40,32 +41,32 @@ from dated_complete_tree import tree_plotting
 
 # First we build the tree by hand
 
-root = tree_fixing.create_node("Passeriformes")
+root = tree_fixing_utils.create_node("Passeriformes")
 root.props["tx_level"] = "order"
 root.props["ancestral_rank"] = "order"
 root.props["desc_rank"] = "order"
 root.props["ph_tx"] = "PH"
 
-family_ph1 = tree_fixing.create_node("Alaudidae")
+family_ph1 = tree_fixing_utils.create_node("Alaudidae")
 family_ph1.props["tx_level"] = "family"
 family_ph1.props["ancestral_rank"] = "family"
 family_ph1.props["desc_rank"] = "family"
 family_ph1.props["ph_tx"] = "PH"
 
-family_tx = tree_fixing.create_node("Colluricinclidae")
+family_tx = tree_fixing_utils.create_node("Colluricinclidae")
 family_tx.props["tx_level"] = "family"
 family_tx.props["ancestral_rank"] = "family"
 family_tx.props["desc_rank"] = "family"
 family_tx.props["ph_tx"] = "TX"
 
-genus_tx9 = tree_fixing.create_node("Laphyctes")
+genus_tx9 = tree_fixing_utils.create_node("Laphyctes")
 genus_tx9.add_prop("genus_name", "Laphyctes")
 genus_tx9.props["tx_level"] = "genus"
 genus_tx9.props["ancestral_rank"] = "genus"
 genus_tx9.props["desc_rank"] = "genus"
 genus_tx9.props["ph_tx"] = "TX"
 
-mrca1 = tree_fixing.create_node("mrca1")
+mrca1 = tree_fixing_utils.create_node("mrca1")
 mrca1.props["ancestral_rank"] = "order"
 mrca1.props["desc_rank"] = "family"
 mrca1.props["ph_tx"] = "PH"
@@ -77,7 +78,7 @@ root.add_child(genus_tx9)
 
 
 
-species_tx4 = tree_fixing.create_node("Laphyctes apolites")
+species_tx4 = tree_fixing_utils.create_node("Laphyctes apolites")
 species_tx4.add_prop("genus_name", "Laphyctes")
 species_tx4.add_prop("species_name", "Laphyctes apolites")
 species_tx4.props["tx_level"] = "species"
@@ -88,7 +89,7 @@ species_tx4.props["ph_tx"] = "TX"
 genus_tx9.add_child(species_tx4)
 
 
-species_tx5 = tree_fixing.create_node("Rhectes analogus")
+species_tx5 = tree_fixing_utils.create_node("Rhectes analogus")
 species_tx5.add_prop("genus_name", "Rhectes")
 species_tx5.add_prop("species_name", "Rhectes analogus")
 species_tx5.props["tx_level"] = "species"
@@ -96,7 +97,7 @@ species_tx5.props["ancestral_rank"] = "species"
 species_tx5.props["desc_rank"] = "species"
 species_tx5.props["ph_tx"] = "TX"
 
-species_tx6 = tree_fixing.create_node("Rhectes rubiensis")
+species_tx6 = tree_fixing_utils.create_node("Rhectes rubiensis")
 species_tx6.add_prop("genus_name", "Rhectes")
 species_tx6.add_prop("species_name", "Rhectes rubiensis")
 species_tx6.props["tx_level"] = "species"
@@ -104,7 +105,7 @@ species_tx6.props["ancestral_rank"] = "species"
 species_tx6.props["desc_rank"] = "species"
 species_tx6.props["ph_tx"] = "TX"
 
-species_tx7 = tree_fixing.create_node("Rhectes ferrugineus")
+species_tx7 = tree_fixing_utils.create_node("Rhectes ferrugineus")
 species_tx7.add_prop("genus_name", "Rhectes")
 species_tx7.add_prop("species_name", "Rhectes ferrugineus")
 species_tx7.props["tx_level"] = "species"
@@ -117,12 +118,12 @@ family_tx.add_child(species_tx7)
 family_tx.add_child(species_tx6)
 
 
-mrca2 = tree_fixing.create_node("mrca2")
+mrca2 = tree_fixing_utils.create_node("mrca2")
 mrca2.props["ancestral_rank"] = "order"
 mrca2.props["desc_rank"] = "family"
 mrca2.props["ph_tx"] = "PH"
 
-genus_ph1 = tree_fixing.create_node("Thamnomanes")
+genus_ph1 = tree_fixing_utils.create_node("Thamnomanes")
 genus_ph1.add_prop("genus_name", "Thamnomanes")
 genus_ph1.props["tx_level"] = "genus"
 genus_ph1.props["ancestral_rank"] = "genus"
@@ -133,7 +134,7 @@ mrca1.add_child(mrca2)
 mrca1.add_child(genus_ph1)
 
 
-species_ph1 = tree_fixing.create_node("Thamnomanes ardesiacus")
+species_ph1 = tree_fixing_utils.create_node("Thamnomanes ardesiacus")
 species_ph1.add_prop("genus_name", "Thamnomanes")
 species_ph1.add_prop("species_name", "Thamnomanes ardesiacus")
 species_ph1.props["tx_level"] = "species"
@@ -141,7 +142,7 @@ species_ph1.props["ancestral_rank"] = "species"
 species_ph1.props["desc_rank"] = "species"
 species_ph1.props["ph_tx"] = "PH"
 
-species_ph2 = tree_fixing.create_node("Thamnomanes saturninus")
+species_ph2 = tree_fixing_utils.create_node("Thamnomanes saturninus")
 species_ph2.add_prop("genus_name", "Thamnomanes")
 species_ph2.add_prop("species_name", "Thamnomanes saturninus")
 species_ph2.props["tx_level"] = "species"
@@ -153,12 +154,12 @@ genus_ph1.add_child(species_ph1)
 genus_ph1.add_child(species_ph2)
 
 
-mrca3 = tree_fixing.create_node("mrca3")
+mrca3 = tree_fixing_utils.create_node("mrca3")
 mrca3.props["ancestral_rank"] = "order"
 mrca3.props["desc_rank"] = "family"
 mrca3.props["ph_tx"] = "PH"
 
-species_ph3 = tree_fixing.create_node("Garrulax virgatus")
+species_ph3 = tree_fixing_utils.create_node("Garrulax virgatus")
 species_ph3.add_prop("genus_name", "Garrulax")
 species_ph3.add_prop("species_name", "Garrulax virgatus")
 species_ph3.props["tx_level"] = "species"
@@ -170,13 +171,13 @@ mrca2.add_child(mrca3)
 mrca2.add_child(species_ph3)
 
 
-family_ph2 = tree_fixing.create_node("Irenidae")
+family_ph2 = tree_fixing_utils.create_node("Irenidae")
 family_ph2.props["tx_level"] = "family"
 family_ph2.props["ancestral_rank"] = "family"
 family_ph2.props["desc_rank"] = "family"
 family_ph2.props["ph_tx"] = "PH"
 
-genus_ph2 = tree_fixing.create_node("Cymbilaimus")
+genus_ph2 = tree_fixing_utils.create_node("Cymbilaimus")
 genus_ph1.add_prop("genus_name", "Cymbilaimus")
 genus_ph2.props["tx_level"] = "genus"
 genus_ph2.props["ancestral_rank"] = "genus"
@@ -187,14 +188,14 @@ mrca3.add_child(family_ph2)
 mrca3.add_child(genus_ph2)
 
 
-genus_ph3 = tree_fixing.create_node("Chloropsis")
+genus_ph3 = tree_fixing_utils.create_node("Chloropsis")
 genus_ph1.add_prop("genus_name", "Chloropsis")
 genus_ph3.props["tx_level"] = "genus"
 genus_ph3.props["ancestral_rank"] = "genus"
 genus_ph3.props["desc_rank"] = "genus"
 genus_ph3.props["ph_tx"] = "PH"
 
-genus_ph4 = tree_fixing.create_node("Irena")
+genus_ph4 = tree_fixing_utils.create_node("Irena")
 genus_ph1.add_prop("genus_name", "Irena")
 genus_ph4.props["tx_level"] = "genus"
 genus_ph4.props["ancestral_rank"] = "genus"
@@ -205,7 +206,7 @@ family_ph2.add_child(genus_ph3)
 family_ph2.add_child(genus_ph4)
 
 
-species_ph4 = tree_fixing.create_node("Chloropsis sonnerati")
+species_ph4 = tree_fixing_utils.create_node("Chloropsis sonnerati")
 species_ph4.add_prop("genus_name", "Chloropsis")
 species_ph4.add_prop("species_name", "Chloropsis sonnerati")
 species_ph4.props["tx_level"] = "species"
@@ -213,7 +214,7 @@ species_ph4.props["ancestral_rank"] = "species"
 species_ph4.props["desc_rank"] = "species"
 species_ph4.props["ph_tx"] = "PH"
 
-species_ph5 = tree_fixing.create_node("Chloropsis aurifrons")
+species_ph5 = tree_fixing_utils.create_node("Chloropsis aurifrons")
 species_ph5.add_prop("genus_name", "Chloropsis")
 species_ph5.add_prop("species_name", "Chloropsis aurifrons")
 species_ph5.props["tx_level"] = "species"
@@ -225,7 +226,7 @@ genus_ph3.add_child(species_ph4)
 genus_ph3.add_child(species_ph5)
 
 
-species_ph6 = tree_fixing.create_node("Irena cyanogastra")
+species_ph6 = tree_fixing_utils.create_node("Irena cyanogastra")
 species_ph6.add_prop("genus_name", "Irena")
 species_ph6.add_prop("species_name", "Irena cyanogastra")
 species_ph6.props["tx_level"] = "species"
@@ -233,7 +234,7 @@ species_ph6.props["ancestral_rank"] = "species"
 species_ph6.props["desc_rank"] = "species"
 species_ph6.props["ph_tx"] = "PH"
 
-species_ph7 = tree_fixing.create_node("Irena puella")
+species_ph7 = tree_fixing_utils.create_node("Irena puella")
 species_ph7.add_prop("genus_name", "Irena")
 species_ph7.add_prop("species_name", "Irena puella")
 species_ph7.props["tx_level"] = "species"
@@ -245,7 +246,7 @@ genus_ph4.add_child(species_ph6)
 genus_ph4.add_child(species_ph7)
 
 
-species_ph8 = tree_fixing.create_node("Cymbilaimus lineatus")
+species_ph8 = tree_fixing_utils.create_node("Cymbilaimus lineatus")
 species_ph8.add_prop("genus_name", "Cymbilaimus")
 species_ph8.add_prop("species_name", "Cymbilaimus lineatus")
 species_ph8.props["tx_level"] = "species"
@@ -253,7 +254,7 @@ species_ph8.props["ancestral_rank"] = "species"
 species_ph8.props["desc_rank"] = "species"
 species_ph8.props["ph_tx"] = "PH"
 
-species_ph9 = tree_fixing.create_node("Cymbilaimus sanctaemariae")
+species_ph9 = tree_fixing_utils.create_node("Cymbilaimus sanctaemariae")
 species_ph9.add_prop("genus_name", "Cymbilaimus")
 species_ph9.add_prop("species_name", "Cymbilaimus sanctaemariae")
 species_ph9.props["tx_level"] = "species"
@@ -265,19 +266,19 @@ genus_ph2.add_child(species_ph8)
 genus_ph2.add_child(species_ph9)
 
 
-mrca4 = tree_fixing.create_node("mrca4")
+mrca4 = tree_fixing_utils.create_node("mrca4")
 mrca4.props["ancestral_rank"] = "family"
 mrca4.props["desc_rank"] = "species"
 mrca4.props["ph_tx"] = "PH"
 
-genus_ph5 = tree_fixing.create_node("Calendulauda")
+genus_ph5 = tree_fixing_utils.create_node("Calendulauda")
 genus_ph5.add_prop("genus_name", "Calendulauda")
 genus_ph5.props["tx_level"] = "genus"
 genus_ph5.props["ancestral_rank"] = "genus"
 genus_ph5.props["desc_rank"] = "genus"
 genus_ph5.props["ph_tx"] = "PH"
 
-genus_tx8 = tree_fixing.create_node("Otocoris")
+genus_tx8 = tree_fixing_utils.create_node("Otocoris")
 genus_tx8.add_prop("genus_name", "Otocoris")
 genus_tx8.props["tx_level"] = "genus"
 genus_tx8.props["ancestral_rank"] = "genus"
@@ -288,7 +289,7 @@ family_ph1.add_child(genus_ph5)
 family_ph1.add_child(mrca4)
 family_ph1.add_child(genus_tx8)
 
-species_tx3 = tree_fixing.create_node("Otocoris berlepschi")
+species_tx3 = tree_fixing_utils.create_node("Otocoris berlepschi")
 species_tx3.add_prop("genus_name", "Otocoris")
 species_tx3.add_prop("species_name", "Otocoris berlepschi")
 species_tx3.props["tx_level"] = "species"
@@ -299,7 +300,7 @@ species_tx3.props["ph_tx"] = "TX"
 genus_tx8.add_child(species_tx3)
 
 
-species_ph10 = tree_fixing.create_node("Calendulauda burra")
+species_ph10 = tree_fixing_utils.create_node("Calendulauda burra")
 species_ph10.add_prop("genus_name", "Calendulauda burra")
 species_ph10.add_prop("species_name", "Calendulauda burra")
 species_ph10.props["tx_level"] = "species"
@@ -307,7 +308,7 @@ species_ph10.props["ancestral_rank"] = "species"
 species_ph10.props["desc_rank"] = "species"
 species_ph10.props["ph_tx"] = "PH"
 
-species_ph11 = tree_fixing.create_node("Calendulauda erythroclamys")
+species_ph11 = tree_fixing_utils.create_node("Calendulauda erythroclamys")
 species_ph11.add_prop("genus_name", "Calendulauda")
 species_ph11.add_prop("species_name", "Calendulauda erythroclamys")
 species_ph11.props["tx_level"] = "species"
@@ -315,7 +316,7 @@ species_ph11.props["ancestral_rank"] = "species"
 species_ph11.props["desc_rank"] = "species"
 species_ph11.props["ph_tx"] = "PH"
 
-species_tx1 = tree_fixing.create_node("Calendulauda albescens")
+species_tx1 = tree_fixing_utils.create_node("Calendulauda albescens")
 species_tx1.add_prop("genus_name", "Calendulauda")
 species_tx1.add_prop("species_name", "Calendulauda albescens")
 species_tx1.props["tx_level"] = "species"
@@ -323,7 +324,7 @@ species_tx1.props["ancestral_rank"] = "species"
 species_tx1.props["desc_rank"] = "species"
 species_tx1.props["ph_tx"] = "TX"
 
-species_tx2 = tree_fixing.create_node("Calendulauda sabota")
+species_tx2 = tree_fixing_utils.create_node("Calendulauda sabota")
 species_tx2.add_prop("genus_name", "Calendulauda")
 species_tx2.add_prop("species_name", "Calendulauda sabota")
 species_tx2.props["tx_level"] = "species"
@@ -337,17 +338,17 @@ genus_ph5.add_child(species_tx1)
 genus_ph5.add_child(species_tx2)
 
 
-mrca5 = tree_fixing.create_node("mrca5")
+mrca5 = tree_fixing_utils.create_node("mrca5")
 mrca5.props["ancestral_rank"] = "family"
 mrca5.props["desc_rank"] = "species"
 mrca5.props["ph_tx"] = "PH"
 
-mrca6 = tree_fixing.create_node("mrca6")
+mrca6 = tree_fixing_utils.create_node("mrca6")
 mrca6.props["ancestral_rank"] = "family"
 mrca6.props["desc_rank"] = "species"
 mrca6.props["ph_tx"] = "PH"
 
-species_tx3 = tree_fixing.create_node("Mirafra pulpa")
+species_tx3 = tree_fixing_utils.create_node("Mirafra pulpa")
 species_tx3.add_prop("genus_name", "Mirafra")
 species_tx3.add_prop("species_name", "Mirafra pulpa")
 species_tx3.props["tx_level"] = "species"
@@ -360,7 +361,7 @@ mrca4.add_child(mrca6)
 mrca4.add_child(species_tx3)
 
 
-species_ph12 = tree_fixing.create_node("Mirafra stresemanni")
+species_ph12 = tree_fixing_utils.create_node("Mirafra stresemanni")
 species_ph12.add_prop("genus_name", "Mirafra")
 species_ph12.add_prop("species_name", "Mirafra stresemanni")
 species_ph12.props["tx_level"] = "species"
@@ -368,7 +369,7 @@ species_ph12.props["ancestral_rank"] = "species"
 species_ph12.props["desc_rank"] = "species"
 species_ph12.props["ph_tx"] = "PH"
 
-species_ph13 = tree_fixing.create_node("Mirafra cantillans")
+species_ph13 = tree_fixing_utils.create_node("Mirafra cantillans")
 species_ph13.add_prop("genus_name", "Mirafra")
 species_ph13.add_prop("species_name", "Mirafra cantillans")
 species_ph13.props["tx_level"] = "species"
@@ -380,7 +381,7 @@ mrca5.add_child(species_ph12)
 mrca5.add_child(species_ph13)
 
 
-species_ph14 = tree_fixing.create_node("Mirafra hova")
+species_ph14 = tree_fixing_utils.create_node("Mirafra hova")
 species_ph14.add_prop("genus_name", "Mirafra")
 species_ph14.add_prop("species_name", "Mirafra hova")
 species_ph14.props["tx_level"] = "species"
@@ -388,7 +389,7 @@ species_ph14.props["ancestral_rank"] = "species"
 species_ph14.props["desc_rank"] = "species"
 species_ph14.props["ph_tx"] = "PH"
 
-species_ph15 = tree_fixing.create_node("Eremopterix verticalis")
+species_ph15 = tree_fixing_utils.create_node("Eremopterix verticalis")
 species_ph15.add_prop("genus_name", "Eremopterix")
 species_ph15.add_prop("species_name", "Eremopterix verticalis")
 species_ph15.props["tx_level"] = "species"
@@ -413,7 +414,6 @@ for node in root.traverse():
     if "date" not in node.props:
         node.add_prop("date", None)
 
-tree_dating.date_labelling(root)
 tree_dating.impute_missing_dates(root)
 tree_dating.compute_branch_lengths(root)
 root.dist = 20
@@ -475,14 +475,14 @@ tree_labelling.populate_genus_dict(root, genus_dict, nmp_genus_dict, None)
 tofix_dict = {}
 tree_labelling.populate_tofix_dict(root, tofix_dict, nmp_genus_dict)
 
-tree_fixing.fix_polyphyly(genus_dict, rng)
-tree_fixing.fix_polyphyly(nmp_genus_dict, rng)
+tree_topology.fix_polyphyly(genus_dict, rng)
+tree_topology.fix_polyphyly(nmp_genus_dict, rng)
 
 tree_labelling.populate_tofix_bkb(root, tofix_dict, [])
 fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
-tree_fixing.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
+tree_topology.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
 
-tree_fixing.fix_all_polytomies(root, rng)
+tree_topology.fix_remaining_polytomies(root, rng)
 
 
 # reassign dates to keep everything looking nice and ultrametric

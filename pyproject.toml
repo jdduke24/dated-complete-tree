@@ -14,8 +14,7 @@ license = {text = "BSD-3-Clause"}
 # Runtime dependencies of the dated_complete_tree package itself.
 dependencies = [
     "numpy",
-    "ete4",
-    "chronosynth",
+    "ete4"
 ]
 
 [tool.setuptools]

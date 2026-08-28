@@ -29,12 +29,13 @@
 
 
 from .taxonomy_utils import tx_levels
+from .tree_fixing_utils import open_config_csv
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-def add_anc_ranks(parent, current_rank=None, plants=False, animals=False, domain=None, kingdom=None, phylum=None, clas=None, order=None, family=None):
+def add_ancestral_ranks(parent, current_rank=None, plants=False, animals=False, domain=None, kingdom=None, phylum=None, clas=None, order=None, family=None):
     """Add ancestral ranks. If this node has no rank, this is the rank of the first node above it which
     does have a rank. If this node has a rank, that rank is both its ancestral and descendant rank.
     Also annotate every node with the domain, kingdom, phylum, class, order and family it is under (if any).
@@ -95,15 +96,15 @@ def add_anc_ranks(parent, current_rank=None, plants=False, animals=False, domain
 
         if child.name == "Metazoa_ott691846":
             # animals
-            add_anc_ranks(child, current_rank, False, True, domain, kingdom, phylum, clas, order, family)
+            add_ancestral_ranks(child, current_rank, False, True, domain, kingdom, phylum, clas, order, family)
         elif child.name == "mrcaott2ott148" or parent.name == "Fungi_ott352914":
             # plants and fungi
-            add_anc_ranks(child, current_rank, True, False, domain, kingdom, phylum, clas, order, family)
+            add_ancestral_ranks(child, current_rank, True, False, domain, kingdom, phylum, clas, order, family)
         else:
-            add_anc_ranks(child, current_rank, plants, animals, domain, kingdom, phylum, clas, order, family)
+            add_ancestral_ranks(child, current_rank, plants, animals, domain, kingdom, phylum, clas, order, family)
 
 
-def add_desc_ranks(parent, plants=False, animals=False):
+def add_descendant_ranks(parent, plants=False, animals=False):
     """Add descendant ranks. If this node has no rank, this is the rank of the first node below it which
     does have a rank. If this node has a rank, that rank is both its ancestral and descendant rank.
     """
@@ -122,7 +123,7 @@ def add_desc_ranks(parent, plants=False, animals=False):
 
         max_desc_rank = "subspecies"
         for child in parent.children:
-            child_rank = add_desc_ranks(child, plants, animals)
+            child_rank = add_descendant_ranks(child, plants, animals)
 
             if plants:
                 if child_rank == "section":
@@ -144,6 +145,41 @@ def add_desc_ranks(parent, plants=False, animals=False):
 
         parent.add_prop("desc_rank",max_desc_rank)
         return max_desc_rank
+
+
+def fix_taxonomy_ordering(tre, filename=None):
+    """Adjust the tree to ensure correct taxonomic ordering, using hand-curated config file.
+    Type 0: remove the rank from the ancestor node.
+    Type 1: remove the rank from the descendant node.
+    """
+
+    import csv
+
+    with open_config_csv(filename, "taxonomy_fixes.csv") as csvfile:
+        rdr = csv.reader(csvfile)
+        for idx, line in enumerate(rdr):
+            if idx == 0:
+                # first line has column headings
+                continue
+            if line[2] == "0":
+                node_to_find = None
+                for node in tre.search_nodes(name=line[0]):
+                    node_to_find = node
+                    break
+                if node_to_find is None:
+                    raise Exception("Node %s in taxonomy ordering config is not in tree." % line[1])
+
+                node.props["tx_level"] = "no rank"
+
+            elif line[2] == "1":
+                node_to_find = None
+                for node in tre.search_nodes(name=line[1]):
+                    node_to_find = node
+                    break
+                if node_to_find is None:
+                    raise Exception("Node %s in taxonomy ordering config is not in tree." % line[1])
+
+                node.props["tx_level"] = "no rank"
 
 
 def populate_genus_dict(parent, genus_dict, nmp_genus_dict, genus_root, kingdom="Other", root=True):
@@ -403,7 +439,7 @@ def populate_tofix_bkb(parent, tofix_dict, current_roots, root_call=True):
 
 
 def process_tofix_bkb(tofix_dict):
-    """Process the output of populate_tofix_bkb into the format needed for tree_fixing.fix_polyphyly."""
+    """Process the output of populate_tofix_bkb into the format needed for tree_topology.fix_polyphyly."""
     new_dict = {}
     for root in tofix_dict:
         for rank in tofix_dict[root]:

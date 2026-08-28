@@ -17,14 +17,14 @@
 # 
 # First, let's check we have all the packages in scope.
 
-# In[1]:
+# In[29]:
 
 
 import numpy as np
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
-from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_topology
 from dated_complete_tree import tree_dating
 from dated_complete_tree import tree_plotting
 
@@ -35,22 +35,22 @@ rng = np.random.default_rng(seed=1)
 # 
 # Now let's load in the metadata we need, then load the tree and annotate it with the metadata.
 
-# In[2]:
+# In[30]:
 
 
-dates, phylogeny_nodes, taxa = tree_loading.load_metadata(annotations='examples/Torpediniformes_annotations.json',
+phylogeny_nodes, taxa = tree_loading.load_metadata(annotations='examples/Torpediniformes_annotations.json',
                                                           taxonomy='examples/Torpediniformes_taxonomy.tsv')
 
 tree = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa, tree_filename='examples/Torpediniformes.tre')
 
 # more metadata labelling
-tree_labelling.add_anc_ranks(tree)
-_ = tree_labelling.add_desc_ranks(tree)
+tree_labelling.add_ancestral_ranks(tree)
+_ = tree_labelling.add_descendant_ranks(tree)
 
 
 # Let's plot the tree. (If the plotting fails for some reason, you can see tree images in the folder `examples/images`, or look at the pdf version of this notebook.)
 
-# In[3]:
+# In[31]:
 
 
 tree_plotting.plot_undated_tree(tree, inline=True)
@@ -72,7 +72,7 @@ tree_plotting.plot_undated_tree(tree, inline=True)
 # 
 # Let's illustrate these two stages. First, we run some 'labelling' steps that collect up the various polytomies and backbones, but don't yet change the tree.
 
-# In[4]:
+# In[32]:
 
 
 genus_dict = {}       # nodes below genus nodes
@@ -85,15 +85,15 @@ tree_labelling.populate_tofix_dict(tree, tofix_dict, nmp_genus_dict)
 
 # We will first resolve polytomies within monophyletic genera.
 
-# In[5]:
+# In[33]:
 
 
-tree_fixing.fix_polyphyly(genus_dict, rng)
+tree_topology.fix_polyphyly(genus_dict, rng)
 
 
 # Let's see how the tree looks after this first step. The bold species are the species moved, and the red-coloured nodes are new nodes inserted to resolve the polytomies.
 
-# In[6]:
+# In[34]:
 
 
 to_highlight = [node.name for key in genus_dict for node in genus_dict[key][0]]
@@ -103,15 +103,15 @@ tree_plotting.plot_undated_tree(tree, inline=True, to_highlight=to_highlight)
 
 # Next, the non-monophyletic genera.
 
-# In[7]:
+# In[35]:
 
 
-tree_fixing.fix_polyphyly(nmp_genus_dict, rng)
+tree_topology.fix_polyphyly(nmp_genus_dict, rng)
 
 
 # Let's plot the tree. The previously-inserted nodes are now yellowish, and the nodes inserted in this step are red.
 
-# In[8]:
+# In[36]:
 
 
 to_highlight = [node.name for key in nmp_genus_dict for node in nmp_genus_dict[key][0]]
@@ -120,18 +120,18 @@ tree_plotting.plot_undated_tree(tree, inline=True, to_highlight=to_highlight)
 
 # And now, we resolve the polytomies where groups of higher rank or single species have been added to the backbone.
 
-# In[9]:
+# In[37]:
 
 
 tree_labelling.populate_tofix_bkb(tree, tofix_dict, [])
 fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
 
-tree_fixing.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
+tree_topology.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
 
 
 # The tree now looks like this. The _Benthobatis_ genus was previously attached to the crown Torpediniformes order node. This could have been placed anywhere in the backbone that was not within either an existing genus or a group of species of a single genus (that is, the groups we resolved in the first stage of this process). The taxonomy-originated groups in the Narkidae family (e.g. _Narke_) could be placed only within the family.
 
-# In[10]:
+# In[38]:
 
 
 to_highlight = [node.name for key in fix_dict for node in fix_dict[key][0]]
@@ -142,12 +142,12 @@ tree_plotting.plot_undated_tree(tree, inline=True, to_highlight=to_highlight)
 # 
 # At this point, the remaining polytomies are within groups that came only from taxonomy. These are resolved by choosing a topology at random.
 
-# In[11]:
+# In[39]:
 
 
 to_highlight = [node.name for node in tree.traverse() if len(node.children) > 2]
 
-tree_fixing.fix_all_polytomies(tree, rng)
+tree_topology.fix_remaining_polytomies(tree, rng)
 
 tree_plotting.plot_undated_tree(tree, inline=True, to_highlight=to_highlight)
 
@@ -156,17 +156,18 @@ tree_plotting.plot_undated_tree(tree, inline=True, to_highlight=to_highlight)
 # 
 # ## 4. Dating the tree
 # 
-# The first stage of dating the tree is to assign the available dates to nodes in our tree. The dates are extracted from the underlying Open Tree database of trees. The package `chronosynth` searches through the database for time-scaled trees and finds the correpsonding common ancestors in the Open Tree supertree. The dates we will use here are cached in the included file `chronosynth_date_info/node_ages.json`. We already loaded them when we loaded the metadata at the beginning. Now let's assign them to the tree.
+# The first stage of dating the tree is to assign the available dates to nodes in our tree. The dates are extracted from the underlying Open Tree database of trees. The package `chronosynth` searches through the database for time-scaled trees and finds the correpsonding common ancestors in the Open Tree supertree. The dates we will use here are cached in the included file `date_cache/node_ages.json`. We will load them and assign them to the tree. Any node with multiple date sources will be assigned the median of the dates.
 
-# In[12]:
+# In[40]:
 
 
+dates = tree_loading.load_dates()
 tree_dating.assign_dates(tree, dates)
 
 
 # Let's look at the dates - these are in Mya. Note that we must have a date on the root node for the interpolation algorithms to work. Leaf nodes without a date are assumed to have a date of 0.
 
-# In[13]:
+# In[41]:
 
 
 tree_plotting.plot_dated_tree(tree, inline=True)
@@ -174,18 +175,17 @@ tree_plotting.plot_dated_tree(tree, inline=True)
 
 # Now we can interpolate a date on each of the undated internal nodes to produce a fully dated tree. We will use here the EQS-LS algorithm.
 
-# In[14]:
+# In[42]:
 
 
 tree_copy = tree.copy()
-tree_dating.date_labelling(tree)
 tree_dating.impute_missing_dates(tree, l=0.25)
 tree_dating.compute_branch_lengths(tree)
 
 
 # And now we have our tree! We can draw a chronogram, with branches drawn in proportion to time.
 
-# In[15]:
+# In[43]:
 
 
 tree_plotting.plot_dated_tree(tree, inline=True, true_branch_lengths=True)
@@ -193,18 +193,17 @@ tree_plotting.plot_dated_tree(tree, inline=True, true_branch_lengths=True)
 
 # To illustrate a different interpolation algorithm, we will now remove the interpolated dates, and instead interpolate using a birth-model algorithm.
 
-# In[16]:
+# In[44]:
 
 
 tree = tree_copy.copy()
-tree_dating.date_labelling(tree)
 tree_dating.impute_missing_dates(tree, use_birth_model=True, rng=rng)
 tree_dating.compute_branch_lengths(tree)
 
 
 # This gives slightly different results, particulary noticeable for example in the _Heteronarce_ genus.
 
-# In[17]:
+# In[45]:
 
 
 tree_plotting.plot_dated_tree(tree, inline=True, true_branch_lengths=True)
@@ -212,7 +211,7 @@ tree_plotting.plot_dated_tree(tree, inline=True, true_branch_lengths=True)
 
 # And finally, we can write our resolved, time-scaled tree to a Newick file.
 
-# In[18]:
+# In[46]:
 
 
 tree_dating.write_tree_with_branch_lengths(tree, "examples/my_dated_tree.tre")
@@ -229,31 +228,49 @@ tree_dating.write_tree_with_branch_lengths(tree, "examples/my_dated_tree.tre")
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
-from dated_complete_tree import tree_fixing
-from dated_complete_tree import tree_dating
+from dated_complete_tree import tree_pruning
+
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging.ERROR)
 
 rng = np.random.default_rng(seed=1)
 
-dates, phylogeny_nodes, taxa = tree_loading.load_metadata(date_cache="chronosynth_date_info/node_ages.json",
-                                                          annotations="opentree16.1_tree/annotations.json",
-                                                          taxonomy="ott3.7.3/taxonomy.tsv",
-                                                          force_dates_refresh=False)
+# load tree metadata
+phylogeny_nodes, taxa = tree_loading.load_metadata(annotations="opentree16.1_tree/annotations.json",
+                                                   taxonomy="ott3.7.3/taxonomy.tsv")
 
+# load tree and annotate with metadata labels
 tree = tree_loading.build_and_annotate_tree(phylogeny_nodes,
                                             taxa,
-                                            tree_filename="opentree16.1_tree/labelled_supertree/labelled_supertree_ottnames.tre",
-                                            suppress_logging=True)
+                                            tree_filename="opentree16.1_tree/labelled_supertree/labelled_supertree_ottnames.tre")
 
-tree_labelling.add_anc_ranks(tree)
-tree_labelling.add_desc_ranks(tree)
+# prune tree to extant species
+tree_pruning.remove_based_on_props(tree, ["extinct", "uncultured", "unidentified", "intergeneric", "hybrid"])
+tree_pruning.strip_birds(tree)
+tree_pruning.strip_turtles(tree)
+tree_pruning.remove_subspecies(tree, rng)
+tree_pruning.impute_species_into_empty_taxa(tree)
 
-for subtree in  tree.search_nodes(name="Torpediniformes_ott356640"):
+# label with taxonomic positioning
+tree_labelling.add_ancestral_ranks(tree)
+tree_labelling.add_descendant_ranks(tree)
+
+# find crown node of subtree we want
+for subtree in tree.search_nodes(name="Torpediniformes_ott356640"):
     break
 
+# load set of species we want
 with open('examples/Torpediniformes_species_to_include.txt', 'r') as fin:
     tips = [line.strip() for line in fin.readlines()]
 
+# prune tree to these species and write Newick file of subtree
 subtree.prune(tips)
-
 subtree.write('examples/my_new_Torpediniformes.tre', parser=1, format_root_node=True)
+
+
+# In[ ]:
+
+
+
 

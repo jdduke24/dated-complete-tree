@@ -29,16 +29,14 @@
 
 
 import sys
-import gc
+import numpy as np
 
 from dated_complete_tree import tree_loading
 from dated_complete_tree import tree_labelling
-from dated_complete_tree import tree_fixing
+from dated_complete_tree import tree_pruning
+from dated_complete_tree import tree_topology
 from dated_complete_tree import tree_dating
-
-import random
-import numpy as np
-import ete4
+from dated_complete_tree import tree_metrics
 
 import logging
 logger = logging.getLogger(__name__)
@@ -46,35 +44,39 @@ logging.basicConfig(filename="main.log", filemode="w", force=True, level=logging
 
 sys.setrecursionlimit(10000)
 
-#####################################################################################################################
-# First, get out entire tree, which we will take subsets of for benchmarking
+rng = np.random.default_rng(seed=1)
 
-# Load metadata for tree from Open Tree and Chronosynth
-dates, phylogeny_nodes, taxa = tree_loading.load_metadata()
+#####################################################################################################################
+# Load and prune tree
+
+# Load metadata for tree: Open Tree taxonomy and phylogenetic annotations
+phylogeny_nodes, taxa = tree_loading.load_metadata()
 
 # Create ete4 tree structure for entire Open Tree of Life, with my annotations
 whole_tre_unmodified = tree_loading.build_and_annotate_tree(phylogeny_nodes, taxa)
 
-tree_fixing.strip_birds(whole_tre_unmodified)
-tree_fixing.strip_turtles(whole_tre_unmodified)
+tree_pruning.remove_based_on_props(whole_tre_unmodified, ["extinct", "uncultured", "unidentified", "intergeneric", "hybrid"])
 
-rng = np.random.default_rng(seed=1)
+tree_pruning.strip_birds(whole_tre_unmodified)
+tree_pruning.strip_turtles(whole_tre_unmodified)
 
-tree_fixing.remove_subspecies(whole_tre_unmodified, rng)
-tree_fixing.impute_species_into_empty_taxa(whole_tre_unmodified)
+tree_pruning.remove_subspecies(whole_tre_unmodified, rng)
 
-tree_fixing.fix_taxonomy_ordering(whole_tre_unmodified)
+tree_pruning.impute_species_into_empty_taxa(whole_tre_unmodified)
 
-tree_labelling.add_anc_ranks(whole_tre_unmodified)
-tree_labelling.add_desc_ranks(whole_tre_unmodified)
+#####################################################################################################################
+# Fix topology
 
-tree_fixing.forced_taxa_moves(whole_tre_unmodified)
+tree_labelling.add_ancestral_ranks(whole_tre_unmodified)
+tree_labelling.add_descendant_ranks(whole_tre_unmodified)
+
+tree_labelling.fix_taxonomy_ordering(whole_tre_unmodified)
+
+tree_topology.forced_taxa_moves(whole_tre_unmodified)
 
 # Copy tree - we will change the copy, and keep the original unchanged so we can restore it next iteration without
 # reloading everything
 whole_tre = whole_tre_unmodified.copy()
-
-# Fix topology
 
 # First, do labelling for steps 1-3:
 #  - 1-2 are independent of each other; step 3 collects up nodes not labelled in 1-2.
@@ -90,26 +92,33 @@ tree_labelling.populate_tofix_dict(whole_tre, tofix_dict, nmp_genus_dict)
 
 # Second, fix the topology based on the labels.
 # Fix steps 1 and 2.
-tree_fixing.fix_polyphyly(genus_dict, rng)
-tree_fixing.fix_polyphyly(nmp_genus_dict, rng)
+tree_topology.fix_polyphyly(genus_dict, rng)
+tree_topology.fix_polyphyly(nmp_genus_dict, rng)
 
-tree_fixing.remove_nonspecies_leaves(whole_tre)
+tree_topology.remove_nonspecies_leaves(whole_tre)
 
 # Find and label backbone for step 3, after steps 1 an 2 already fixed.
 tree_labelling.populate_tofix_bkb(whole_tre, tofix_dict, [])
 fix_dict = tree_labelling.process_tofix_bkb(tofix_dict)
 
 # Finally, fix step 3.
-tree_fixing.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
+tree_topology.fix_polyphyly(fix_dict, rng, expand_parent_backbones=True)
 
-tree_fixing.remove_nonspecies_leaves(whole_tre)
+tree_topology.remove_nonspecies_leaves(whole_tre)
 
 # Last of all, polytomy resolution.
-tree_fixing.fix_all_polytomies(whole_tre, rng)
+tree_topology.fix_remaining_polytomies(whole_tre, rng)
 
 # Remove one-child nodes. Gives a fully bifurcating tree.
-whole_tre = tree_fixing.delete_one_child_nodes(whole_tre)
+whole_tre = tree_topology.delete_one_child_nodes(whole_tre)
 
+#####################################################################################################################
+# Assign and interpolate dates
+
+# Load dates from json
+dates = tree_loading.load_dates()
+
+# Assign dates
 tree_dating.assign_dates(whole_tre, dates)
 
 

@@ -374,7 +374,7 @@ def plot_tree(tree, cmap, ax=None, figsize=(10, 8), align_labels=True):
 
 
 import pickle
-with open("figures/figure8/tree_test.pickle", "rb") as f:
+with open("figures/figure8/tree_for_fig8.pickle", "rb") as f:
     whole_tre = pickle.load(f)
 
 whole_tre.dist = 1
